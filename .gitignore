@@ -1,0 +1,17 @@
+venv/
+
+.env
+
+__pycache__/
+
+*.pyc
+
+.idea/
+
+.vscode/
+
+.pytest_cache/
+
+*.db
+
+.env.local
