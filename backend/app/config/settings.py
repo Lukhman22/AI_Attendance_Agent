@@ -36,6 +36,13 @@ def _env_int(key: str, default: int) -> int:
     return int(value)
 
 
+def _env_float(key: str, default: float) -> float:
+    value = _env(key)
+    if value is None:
+        return default
+    return float(value)
+
+
 def _env_optional_path(key: str, default: str | None) -> str | None:
     value = _env(key, default)
     if value is None:
@@ -67,7 +74,9 @@ class Settings(BaseModel):
 
     app_name: str = Field(default_factory=lambda: _env("APP_NAME", "AI Attendance Agent"))
     app_version: str = Field(default_factory=lambda: _env("APP_VERSION", "1.0.0"))
-    environment: Literal["local", "development", "staging", "production", "test"] = Field(default_factory=_env_environment)
+    environment: Literal["local", "development", "staging", "production", "test"] = Field(
+        default_factory=_env_environment
+    )
     debug: bool = Field(default_factory=lambda: _env_bool("DEBUG", False))
 
     api_v1_prefix: str = Field(default_factory=lambda: _env("API_V1_PREFIX", "/api/v1"))
@@ -93,6 +102,80 @@ class Settings(BaseModel):
 
     backend_cors_origins: list[str] = Field(default_factory=lambda: _env_csv("BACKEND_CORS_ORIGINS"))
     trusted_hosts: list[str] = Field(default_factory=lambda: _env_csv("TRUSTED_HOSTS", ["*"]))
+
+    # HR rules (env defaults; DB SalaryRule can override per deployment)
+    min_working_hours: float = Field(default_factory=lambda: _env_float("MIN_WORKING_HOURS", 8.0))
+    max_payable_hours: float = Field(default_factory=lambda: _env_float("MAX_PAYABLE_HOURS", 8.0))
+    overtime_paid: bool = Field(default_factory=lambda: _env_bool("OVERTIME_PAID", False))
+    break_duration_required: bool = Field(default_factory=lambda: _env_bool("BREAK_DURATION_REQUIRED", True))
+    default_working_days_per_month: int = Field(
+        default_factory=lambda: _env_int("DEFAULT_WORKING_DAYS_PER_MONTH", 26)
+    )
+    # Shared monthly salary for payroll (internship / flat-rate mode)
+    default_monthly_salary: float = Field(
+        default_factory=lambda: _env_float("DEFAULT_MONTHLY_SALARY", 30000.0)
+    )
+
+    # Attendance source abstraction: file (csv/excel) or future api
+    attendance_provider: Literal["file", "api"] = Field(
+        default_factory=lambda: _env("ATTENDANCE_PROVIDER", "file").lower()  # type: ignore[arg-type]
+    )
+    uploads_dir: str = Field(
+        default_factory=lambda: _env("UPLOADS_DIR", str(PROJECT_ROOT / "uploads"))
+    )
+    reports_dir: str = Field(
+        default_factory=lambda: _env("REPORTS_DIR", str(PROJECT_ROOT / "reports"))
+    )
+
+    # Notifications
+    notification_provider: Literal["telegram", "whatsapp", "none"] = Field(
+        default_factory=lambda: _env("NOTIFICATION_PROVIDER", "telegram").lower()  # type: ignore[arg-type]
+    )
+    telegram_token: str | None = Field(default_factory=lambda: _env("TELEGRAM_TOKEN"))
+    telegram_chat_id: str | None = Field(default_factory=lambda: _env("TELEGRAM_CHAT_ID"))
+    whatsapp_token: str | None = Field(default_factory=lambda: _env("WHATSAPP_TOKEN"))
+    whatsapp_group_id: str | None = Field(default_factory=lambda: _env("WHATSAPP_GROUP_ID"))
+    whatsapp_phone_number_id: str | None = Field(default_factory=lambda: _env("WHATSAPP_PHONE_NUMBER_ID"))
+    whatsapp_template_name: str | None = Field(default_factory=lambda: _env("WHATSAPP_TEMPLATE_NAME"))
+    whatsapp_template_language: str = Field(
+        default_factory=lambda: _env("WHATSAPP_TEMPLATE_LANGUAGE", "en_US")
+    )
+    whatsapp_api_version: str = Field(default_factory=lambda: _env("WHATSAPP_API_VERSION", "v19.0"))
+    report_time: str = Field(default_factory=lambda: _env("REPORT_TIME", "18:30"))
+
+    # Upload safety
+    max_upload_bytes: int = Field(default_factory=lambda: _env_int("MAX_UPLOAD_BYTES", 10 * 1024 * 1024))
+    allowed_upload_extensions: list[str] = Field(
+        default_factory=lambda: _env_csv(
+            "ALLOWED_UPLOAD_EXTENSIONS",
+            [".csv", ".xlsx", ".xlsm", ".xls"],
+        )
+    )
+
+    # Optional local employee directory (salary / master data for attendance identity enrichment)
+    employee_directory_file: str | None = Field(
+        default_factory=lambda: _env(
+            "EMPLOYEE_DIRECTORY_FILE",
+            str(PROJECT_ROOT / "sample_data" / "employees.csv"),
+        )
+    )
+    auto_register_employees_from_attendance: bool = Field(
+        default_factory=lambda: _env_bool("AUTO_REGISTER_EMPLOYEES_FROM_ATTENDANCE", True)
+    )
+
+    # AI
+    openai_api_key: str | None = Field(default_factory=lambda: _env("OPENAI_API_KEY"))
+    openai_model: str = Field(default_factory=lambda: _env("OPENAI_MODEL", "gpt-4o-mini"))
+
+    # AI analysis thresholds
+    late_arrival_time: str = Field(default_factory=lambda: _env("LATE_ARRIVAL_TIME", "09:30"))
+    short_workday_threshold_hours: float = Field(
+        default_factory=lambda: _env_float("SHORT_WORKDAY_THRESHOLD_HOURS", 8.0)
+    )
+    extremely_short_workday_hours: float = Field(
+        default_factory=lambda: _env_float("EXTREMELY_SHORT_WORKDAY_HOURS", 2.0)
+    )
+    ai_auto_notify: bool = Field(default_factory=lambda: _env_bool("AI_AUTO_NOTIFY", True))
 
     @property
     def sqlalchemy_database_uri(self) -> str:

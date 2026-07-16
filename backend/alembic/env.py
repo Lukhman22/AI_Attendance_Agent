@@ -16,9 +16,11 @@ for path in (PROJECT_ROOT, BACKEND_ROOT):
 try:
     from app.config import get_settings
     from app.database.base import Base
+    import app.models  # noqa: F401
 except ModuleNotFoundError:
     from backend.app.config import get_settings
     from backend.app.database.base import Base
+    import backend.app.models  # noqa: F401
 
 config = context.config
 
