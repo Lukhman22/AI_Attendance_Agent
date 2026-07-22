@@ -24,8 +24,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     Path(settings.reports_dir).mkdir(parents=True, exist_ok=True)
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
+    async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("%s startup", settings.app_name)
+        
+        try:
+            from faster_whisper import WhisperModel
+            logger.info("Loading Whisper model...")
+            app.state.whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
+            logger.info("Whisper model loaded successfully.")
+        except Exception as e:
+            logger.error(f"Failed to load Whisper model: {e}")
+            app.state.whisper_model = None
+            
         yield
         logger.info("%s shutdown", settings.app_name)
 
@@ -55,13 +65,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     register_exception_handlers(configured_app)
     configured_app.include_router(api_router, prefix=settings.api_v1_prefix)
 
-    @configured_app.get("/", tags=["system"])
-    def home() -> dict[str, str]:
-        return {"message": f"{settings.app_name} is running"}
-
     @configured_app.get("/health", tags=["system"])
     def health() -> dict[str, str]:
         return {"status": "ok", "environment": settings.environment}
+
+    # Serve React Frontend in Production
+    from fastapi.responses import FileResponse
+    from fastapi import HTTPException
+
+    @configured_app.get("/{full_path:path}", tags=["frontend"], include_in_schema=False)
+    async def serve_frontend(full_path: str):
+        # Allow /api routes to fall through to normal 404 behavior instead of returning HTML
+        if full_path.startswith("api/"):
+            raise HTTPException(status_code=404, detail="Not Found")
+            
+        dist_path = Path(__file__).parent.parent.parent / "frontend" / "dist"
+        
+        # If the requested file exists (like JS/CSS assets, favicon), serve it
+        file_path = dist_path / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(file_path)
+            
+        # Fallback to index.html for React Router SPA behavior
+        index_path = dist_path / "index.html"
+        if index_path.is_file():
+            return FileResponse(index_path)
+            
+        # Fallback for development if the build doesn't exist
+        if full_path == "":
+            return {"message": f"{settings.app_name} is running (Frontend not built)"}
+            
+        raise HTTPException(status_code=404, detail="Not Found")
 
     return configured_app
 

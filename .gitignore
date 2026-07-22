@@ -1,23 +1,52 @@
+# Virtual Environment
 venv/
 
+# Environment Variables
 .env
-
-__pycache__/
-
-*.pyc
-
-.idea/
-
-.vscode/
-
-.pytest_cache/
-
-*.db
-
 .env.local
 
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# IDE
+.idea/
+.vscode/
+
+# Database
+*.db
+
+# Reports
+reports/*
+!reports/.gitkeep
+
+# Uploads
 uploads/*
 !uploads/.gitkeep
 
-reports/*
-!reports/.gitkeep
+# Node
+frontend/node_modules/
+
+# Frontend Build
+# Uncomment the next line if you DON'T want the built frontend in Git.
+# Since you're deploying FastAPI + React together, keep it commented.
+# frontend/dist/
+
+# Logs
+*.log
+
+# OS Files
+Thumbs.db
+
+# Local development scripts
+test_fastapi.py
+test_main.py
+test_pydantic.py
+test_regression.py
+test_script.py
+wipe_data.py

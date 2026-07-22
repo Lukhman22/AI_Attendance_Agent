@@ -144,14 +144,13 @@ class HRInsightsService:
         return self._repo.list_recommendations(work_date)
 
     def _send_executive_notification(self, work_date: date) -> None:
-        summary = self._repo.get_executive_summary(work_date)
-        if summary is None:
-            return
         if self._settings.notification_provider == "none":
             logger.info("Skipping auto notification; provider is none")
             return
+        from ..services.notification_service import generate_daily_executive_report
+        msg = generate_daily_executive_report(self._db, work_date)
         try:
-            NotificationService(self._db, self._settings).send(summary.summary_text)
+            NotificationService(self._db, self._settings).send(msg)
             self._db.commit()
         except Exception:  # noqa: BLE001
             logger.exception("Auto executive summary notification failed")
@@ -161,52 +160,10 @@ class HRInsightsService:
         if self._settings.notification_provider == "none":
             logger.info("Skipping monthly payroll notification; provider is none")
             return
-        monthly = self._repo.get_monthly(year, month)
-        payroll_rows = PayrollRepository(self._db).list_for_period(year, month)
-        if not payroll_rows:
-            return
-
-        lines = [
-            f"Monthly Payroll Summary — {month:02d}/{year}",
-            "",
-        ]
-        if monthly is not None:
-            lines.extend(
-                [
-                    f"Company attendance: {monthly.company_attendance_percentage}%",
-                    f"Average daily hours: {monthly.average_daily_hours}",
-                    f"Total salary deductions: ₹{monthly.total_salary_deductions}",
-                    "",
-                ]
-            )
-        lines.append("Employees:")
-        for row in payroll_rows:
-            name = row.employee.name if row.employee else str(row.employee_id)
-            lines.append(
-                f"• {name}: Final ₹{row.final_salary} "
-                f"(deduction ₹{row.salary_deduction}, absent {row.absent_days}, leave {row.leave_days})"
-            )
-
-        from datetime import date
-        import calendar as cal
-
-        from ..database.repositories import IgnoredAttendanceRepository
-
-        start = date(year, month, 1)
-        end = date(year, month, cal.monthrange(year, month)[1])
-        ignored = IgnoredAttendanceRepository(self._db).list_for_range(start, end)
-        if ignored:
-            lines.extend(["", "Warnings", ""])
-            count = len(ignored)
-            lines.append(
-                f"{count} attendance record{'s' if count != 1 else ''} "
-                "ignored because the employee is not registered."
-            )
-            for item in ignored[:10]:
-                lines.append(f"• Employee ID {item.employee_code}: {item.reason}")
-
+        from ..services.notification_service import generate_monthly_payroll_report
+        msg = generate_monthly_payroll_report(self._db, month, year)
         try:
-            NotificationService(self._db, self._settings).send("\n".join(lines))
+            NotificationService(self._db, self._settings).send(msg)
             self._db.commit()
         except Exception:  # noqa: BLE001
             logger.exception("Monthly payroll notification failed")

@@ -16,7 +16,7 @@
 | Monthly payroll generation | ✅ |
 | Attendance & payroll reports (CSV, Excel, PDF) | ✅ |
 | Report browser download endpoint | ✅ |
-| Telegram & WhatsApp notification providers | ✅ |
+| Telegram notification provider | ✅ |
 | Daily executive summary auto-notification | ✅ |
 | Monthly payroll summary auto-notification | ✅ |
 | Deterministic AI insights & anomaly alerts | ✅ |
@@ -60,8 +60,8 @@
 
 | Trigger | Provider | Verified |
 |---------|----------|----------|
-| After attendance upload | Telegram / WhatsApp | ✅ (when configured) |
-| After payroll generate | Telegram / WhatsApp | ✅ (when `AI_AUTO_NOTIFY=true`) |
+| After attendance upload | Telegram | ✅ (when configured) |
+| After payroll generate | Telegram | ✅ (when `AI_AUTO_NOTIFY=true`) |
 | Manual send | Notifications page API | ✅ |
 
 ### Reports

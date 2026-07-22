@@ -19,6 +19,7 @@ class InsightRepository:
             self._db.add(record)
             self._db.flush()
             return record
+
         existing.employees_present = record.employees_present
         existing.employees_absent = record.employees_absent
         existing.employees_below_min_hours = record.employees_below_min_hours
@@ -39,6 +40,7 @@ class InsightRepository:
             self._db.add(record)
             self._db.flush()
             return record
+
         existing.company_attendance_percentage = record.company_attendance_percentage
         existing.average_daily_hours = record.average_daily_hours
         existing.total_salary_deductions = record.total_salary_deductions
@@ -55,6 +57,7 @@ class InsightRepository:
             self._db.add(record)
             self._db.flush()
             return record
+
         existing.summary_text = record.summary_text
         existing.estimated_deductions = record.estimated_deductions
         existing.payload = record.payload

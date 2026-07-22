@@ -112,7 +112,7 @@ export function EmployeesPage() {
         subtitle="Employee master data and current-month attendance metrics from the API."
       />
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Input
           className="max-w-md"
           placeholder="Search employees"
@@ -174,9 +174,9 @@ export function EmployeesPage() {
       )}
 
       <div className="mt-6 grid gap-4 xl:grid-cols-2">
-        <Card className="p-5">
-          <h2 className="font-display text-lg font-semibold">Add / Update Employee</h2>
-          <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={handleSubmit(onCreate)}>
+        <Card className="p-6">
+          <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Add / Update Employee</h2>
+          <form className="mt-4 grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit(onCreate)}>
             <Input placeholder="Employee ID" {...register('employee_code', { required: true })} />
             <Input placeholder="Full name" {...register('name', { required: true })} />
             <Input placeholder="Department" {...register('department')} />
@@ -195,8 +195,8 @@ export function EmployeesPage() {
           </form>
         </Card>
 
-        <Card className="p-5">
-          <h2 className="font-display text-lg font-semibold">Employee Profile</h2>
+        <Card className="p-6">
+          <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Employee Profile</h2>
           {!selected ? (
             <EmptyState title="Select an employee" description="Click a name in the table to open the profile panel." />
           ) : (
@@ -208,21 +208,21 @@ export function EmployeesPage() {
                 </p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-xl bg-ink-50 p-3 dark:bg-ink-900/50">
-                  <p className="text-xs text-ink-500">Attendance %</p>
-                  <p className="text-lg font-semibold">{formatPercent(selectedStats?.attendance_percentage)}</p>
+                <div className="rounded-xl bg-ink-50/50 p-4 ring-1 ring-inset ring-ink-200/50 dark:bg-ink-900/30 dark:ring-ink-800/50">
+                  <p className="text-xs font-medium text-ink-500">Attendance %</p>
+                  <p className="text-xl font-semibold text-ink-900 dark:text-ink-100">{formatPercent(selectedStats?.attendance_percentage)}</p>
                 </div>
-                <div className="rounded-xl bg-ink-50 p-3 dark:bg-ink-900/50">
-                  <p className="text-xs text-ink-500">Avg Daily Hours</p>
-                  <p className="text-lg font-semibold">{formatNumber(selectedStats?.average_daily_hours)}</p>
+                <div className="rounded-xl bg-ink-50/50 p-4 ring-1 ring-inset ring-ink-200/50 dark:bg-ink-900/30 dark:ring-ink-800/50">
+                  <p className="text-xs font-medium text-ink-500">Avg Daily Hours</p>
+                  <p className="text-xl font-semibold text-ink-900 dark:text-ink-100">{formatNumber(selectedStats?.average_daily_hours)}</p>
                 </div>
-                <div className="rounded-xl bg-ink-50 p-3 dark:bg-ink-900/50">
-                  <p className="text-xs text-ink-500">Leave Days (month)</p>
-                  <p className="text-lg font-semibold">{selectedStats?.leave_days ?? 0}</p>
+                <div className="rounded-xl bg-ink-50/50 p-4 ring-1 ring-inset ring-ink-200/50 dark:bg-ink-900/30 dark:ring-ink-800/50">
+                  <p className="text-xs font-medium text-ink-500">Leave Days (month)</p>
+                  <p className="text-xl font-semibold text-ink-900 dark:text-ink-100">{selectedStats?.leave_days ?? 0}</p>
                 </div>
-                <div className="rounded-xl bg-ink-50 p-3 dark:bg-ink-900/50">
-                  <p className="text-xs text-ink-500">Absent Days</p>
-                  <p className="text-lg font-semibold">{selectedStats?.absent_days ?? 0}</p>
+                <div className="rounded-xl bg-ink-50/50 p-4 ring-1 ring-inset ring-ink-200/50 dark:bg-ink-900/30 dark:ring-ink-800/50">
+                  <p className="text-xs font-medium text-ink-500">Absent Days</p>
+                  <p className="text-xl font-semibold text-ink-900 dark:text-ink-100">{selectedStats?.absent_days ?? 0}</p>
                 </div>
               </div>
 

@@ -1,11 +1,8 @@
 import axios, { AxiosError } from 'axios'
 import type { ApiErrorBody } from '../types/api'
 
-const baseURL = import.meta.env.VITE_API_BASE_URL ?? ''
-
 export const api = axios.create({
-  baseURL,
-  timeout: 60000,
+  baseURL: '/api/v1',
 })
 
 export function getErrorMessage(error: unknown, fallback = 'Something went wrong') {

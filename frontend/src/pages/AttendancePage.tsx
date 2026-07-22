@@ -1,13 +1,86 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { AlertTriangle, Upload } from 'lucide-react'
+import { AlertTriangle, Upload, Loader2, CheckCircle2 } from 'lucide-react'
 import { attendanceApi, employeesApi } from '../services'
 import { getErrorMessage } from '../services/apiClient'
 import type { AttendanceRecord, DailySummary, Employee, IgnoredAttendanceRecord } from '../types/api'
 import { DataTable } from '../components/DataTable'
-import { Badge, Button, Card, Input, PageHeader, Select, Skeleton, statusTone } from '../components/ui'
+import { Badge, Card, Input, PageHeader, Select, Skeleton, statusTone } from '../components/ui'
 import { useApp } from '../context/AppContext'
-import { formatNumber, todayISO } from '../utils/format'
+import { formatNumber, todayISO, clsx } from '../utils/format'
+
+function FileUploadZone({ onUpload, uploading, success }: { onUpload: (file: File) => void, uploading: boolean, success: boolean }) {
+  const [isDragging, setIsDragging] = useState(false)
+  
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (e.type === 'dragenter' || e.type === 'dragover') setIsDragging(true)
+    else if (e.type === 'dragleave') setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      onUpload(e.dataTransfer.files[0])
+    }
+  }
+
+  return (
+    <div 
+      onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
+      className={clsx(
+        "relative mb-8 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 text-center transition-all",
+        isDragging ? "border-brand-500 bg-brand-50/50 dark:border-brand-500/50 dark:bg-brand-900/10" 
+        : success ? "border-emerald-500/50 bg-emerald-50/50 dark:border-emerald-500/30 dark:bg-emerald-900/10"
+        : "border-ink-200 bg-ink-50/50 hover:bg-ink-50 dark:border-ink-800 dark:bg-ink-900/20 dark:hover:bg-ink-900/40"
+      )}
+    >
+      <input
+        type="file"
+        accept=".csv,.xlsx,.xlsm,.xls"
+        className="absolute inset-0 cursor-pointer opacity-0"
+        disabled={uploading}
+        onChange={(e) => {
+          if (e.target.files?.[0]) onUpload(e.target.files[0])
+        }}
+        title="Upload CSV / Excel"
+      />
+      
+      {uploading ? (
+        <>
+          <div className="mb-4 rounded-full bg-brand-100 p-3 text-brand-600 dark:bg-brand-900/30 dark:text-brand-400">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+          <p className="font-display text-base font-semibold text-ink-900 dark:text-ink-100">Processing records...</p>
+          <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">Validating and normalizing attendance data.</p>
+        </>
+      ) : success ? (
+        <>
+          <div className="mb-4 rounded-full bg-emerald-100 p-3 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+          <p className="font-display text-base font-semibold text-emerald-900 dark:text-emerald-100">Upload Complete</p>
+          <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">Records have been successfully imported.</p>
+        </>
+      ) : (
+        <>
+          <div className="mb-4 rounded-full bg-ink-100 p-3 text-ink-600 dark:bg-ink-800 dark:text-ink-400">
+            <Upload className="h-6 w-6" />
+          </div>
+          <p className="font-display text-base font-semibold text-ink-900 dark:text-ink-100">
+            Click or drag file to this area to upload
+          </p>
+          <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">
+            Support for a single or bulk CSV / Excel file.
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
 
 export function AttendancePage() {
   const { pushActivity, bumpInsightsRefresh } = useApp()
@@ -19,6 +92,7 @@ export function AttendancePage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [uploadSuccess, setUploadSuccess] = useState(false)
   const [uploadWarnings, setUploadWarnings] = useState<IgnoredAttendanceRecord[]>([])
   const [summaryIgnored, setSummaryIgnored] = useState<IgnoredAttendanceRecord[]>([])
 
@@ -82,12 +156,17 @@ export function AttendancePage() {
   async function onUpload(file?: File | null) {
     if (!file) return
     setUploading(true)
+    setUploadSuccess(false)
     try {
       const result = await attendanceApi.upload(file)
       const ignored = result.ignored_records || []
       setUploadWarnings(ignored)
       const processed = result.imported + result.upserted
       const employees = result.employees_processed ?? processed
+      
+      setUploadSuccess(true)
+      setTimeout(() => setUploadSuccess(false), 3000)
+
       toast.success(
         `Attendance Upload Completed — Employees: ${employees}, Records: ${processed}, Ignored: ${result.ignored ?? 0}`,
       )
@@ -112,52 +191,48 @@ export function AttendancePage() {
   return (
     <div>
       <PageHeader
-        title="Attendance"
-        subtitle="Upload biometric CSV/Excel exports and review normalized records from the API."
-        actions={
-          <label className="inline-flex cursor-pointer">
-            <input
-              type="file"
-              accept=".csv,.xlsx,.xlsm,.xls"
-              className="hidden"
-              disabled={uploading}
-              onChange={(e) => void onUpload(e.target.files?.[0])}
-            />
-            <span className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700">
-              <Upload className="h-4 w-4" />
-              {uploading ? 'Uploading…' : 'Upload CSV / Excel'}
-            </span>
-          </label>
-        }
+        title="Attendance & Import"
+        subtitle="Bulk import biometric CSV/Excel exports or seamlessly review API-normalized attendance logs."
       />
 
-      {warningRows.length ? (
-        <Card className="mb-4 border border-amber-300/80 bg-amber-50 p-4 dark:border-amber-700 dark:bg-amber-950/30">
-          <div className="mb-2 flex items-center gap-2 text-amber-900 dark:text-amber-100">
-            <AlertTriangle className="h-4 w-4" />
-            <h2 className="font-display text-base font-semibold">Warnings</h2>
-          </div>
-          <ul className="space-y-2 text-sm text-amber-950 dark:text-amber-50">
-            {warningRows.map((item) => (
-              <li key={`${item.employee_code}-${item.work_date || ''}`}>
-                <p className="font-medium">Employee ID {item.employee_code} not found.</p>
-                <p className="text-amber-800 dark:text-amber-200">
-                  Attendance record ignored. Please register this employee before importing attendance.
-                </p>
-                <p className="text-xs text-amber-700 dark:text-amber-300">{item.reason}</p>
-              </li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
+      <FileUploadZone onUpload={onUpload} uploading={uploading} success={uploadSuccess} />
 
-      <Card className="mb-4 grid gap-3 p-4 md:grid-cols-4">
+      {warningRows.length > 0 && (
+        <Card className="mb-8 overflow-hidden border-rose-200 p-0 shadow-sm ring-1 ring-inset ring-rose-500/20 dark:border-rose-900/50 dark:ring-rose-500/20">
+          <div className="flex items-center gap-3 border-b border-rose-200/50 bg-rose-50/80 px-6 py-4 dark:border-rose-900/50 dark:bg-rose-950/40">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-400">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+            <div>
+              <h2 className="font-display text-[15px] font-semibold text-rose-900 dark:text-rose-100">Upload Warnings Detected</h2>
+              <p className="text-[13px] font-medium text-rose-700 dark:text-rose-400">{warningRows.length} ignored records due to missing employee mapping.</p>
+            </div>
+          </div>
+          <div className="max-h-[240px] overflow-y-auto bg-white p-6 dark:bg-ink-950">
+            <ul className="space-y-3">
+              {warningRows.map((item) => (
+                <li key={`${item.employee_code}-${item.work_date || ''}`} className="flex items-start gap-3 rounded-xl bg-rose-50/50 px-4 py-3 dark:bg-rose-950/20">
+                  <div className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-rose-400 dark:bg-rose-600" />
+                  <div>
+                    <p className="text-[13px] font-semibold text-rose-900 dark:text-rose-100">Employee ID {item.employee_code} not found</p>
+                    <p className="mt-1 text-xs text-rose-700 dark:text-rose-400">
+                      Attendance record ignored. Register this employee before re-importing. Reason: {item.reason}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Card>
+      )}
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <label className="mb-1 block text-xs font-medium text-ink-500">Date</label>
+          <label className="mb-1.5 block text-[13px] font-medium text-ink-700 dark:text-ink-300">Date</label>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-ink-500">Status</label>
+          <label className="mb-1.5 block text-[13px] font-medium text-ink-700 dark:text-ink-300">Status</label>
           <Select value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="all">All statuses</option>
             <option value="present">Present</option>
@@ -169,7 +244,7 @@ export function AttendancePage() {
           </Select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-ink-500">Department</label>
+          <label className="mb-1.5 block text-[13px] font-medium text-ink-700 dark:text-ink-300">Department</label>
           <Select value={department} onChange={(e) => setDepartment(e.target.value)}>
             <option value="all">All departments</option>
             {departmentOptions.map((d) => (
@@ -180,17 +255,17 @@ export function AttendancePage() {
           </Select>
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-ink-500">Search</label>
+          <label className="mb-1.5 block text-[13px] font-medium text-ink-700 dark:text-ink-300">Search</label>
           <Input
             placeholder="Employee ID or name"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-      </Card>
+      </div>
 
       {loading ? (
-        <Skeleton className="h-96" />
+        <Skeleton className="h-[400px]" />
       ) : (
         <DataTable
           rows={filtered}
@@ -251,12 +326,6 @@ export function AttendancePage() {
           ]}
         />
       )}
-
-      <div className="mt-4 flex justify-end">
-        <Button variant="secondary" onClick={() => void load(date)}>
-          Refresh
-        </Button>
-      </div>
     </div>
   )
 }

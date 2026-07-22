@@ -16,14 +16,15 @@ import {
   StatCard,
   statusTone,
 } from '../components/ui'
-import { formatMoney, formatNumber, formatPercent, monthBounds, todayISO } from '../utils/format'
+import { formatMoney, formatNumber, formatPercent, todayISO } from '../utils/format'
+import { AIAssistant } from '../components/AIAssistant'
 
 export function AIInsightsPage() {
   const { insightsRefreshKey } = useApp()
   const [workDate, setWorkDate] = useState(todayISO())
-  const bounds = monthBounds()
-  const [year, setYear] = useState(bounds.year)
-  const [month, setMonth] = useState(bounds.month)
+  const dateObj = new Date(workDate || todayISO())
+  const year = dateObj.getFullYear()
+  const month = dateObj.getMonth() + 1
   const [loading, setLoading] = useState(true)
   const [executive, setExecutive] = useState<ExecutiveSummary | null>(null)
   const [daily, setDaily] = useState<AiDailyInsight | null>(null)
@@ -72,20 +73,16 @@ export function AIInsightsPage() {
         }
       />
 
-      <Card className="mb-4 grid gap-3 p-4 md:grid-cols-4">
+      <Card className="mb-4 grid gap-3 p-4 md:grid-cols-1">
         <div>
           <label className="mb-1 block text-xs text-ink-500">Analysis date</label>
           <Input type="date" value={workDate} onChange={(e) => setWorkDate(e.target.value)} />
         </div>
-        <div>
-          <label className="mb-1 block text-xs text-ink-500">Year</label>
-          <Input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs text-ink-500">Month</label>
-          <Input type="number" min={1} max={12} value={month} onChange={(e) => setMonth(Number(e.target.value))} />
-        </div>
       </Card>
+
+      <div className="mb-6">
+        <AIAssistant context={{ work_date: workDate, year, month }} />
+      </div>
 
       {loading ? (
         <div className="space-y-4">
@@ -109,7 +106,7 @@ export function AIInsightsPage() {
             <Card className="p-5">
               <div className="mb-3 flex items-center gap-2">
                 <Brain className="h-5 w-5 text-brand-600" />
-                <h2 className="font-display text-lg font-semibold">Executive Summary</h2>
+                <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Executive Summary</h2>
               </div>
               {executive ? (
                 <pre className="whitespace-pre-wrap rounded-xl bg-ink-50 p-4 text-sm leading-relaxed dark:bg-ink-900/50">
@@ -126,7 +123,7 @@ export function AIInsightsPage() {
             <Card className="p-5">
               <div className="mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-600" />
-                <h2 className="font-display text-lg font-semibold">Smart Alerts</h2>
+                <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Smart Alerts</h2>
               </div>
               {alerts.length ? (
                 <div className="max-h-80 space-y-2 overflow-y-auto">
@@ -153,7 +150,7 @@ export function AIInsightsPage() {
 
           <div className="mt-6 grid gap-4 xl:grid-cols-2">
             <Card className="p-5">
-              <h2 className="font-display text-lg font-semibold">Key Findings</h2>
+              <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Key Findings</h2>
               {recommendations.length ? (
                 <div className="mt-4 space-y-3">
                   {recommendations.map((rec) => (
@@ -173,8 +170,8 @@ export function AIInsightsPage() {
               )}
             </Card>
 
-            <Card className="p-5">
-              <h2 className="font-display text-lg font-semibold">Daily Attendance Insights</h2>
+            <Card className="p-6">
+              <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Daily Attendance Insights</h2>
               {daily ? (
                 <div className="mt-4 space-y-2 text-sm">
                   <p>Missing checkout: {daily.employees_missing_checkout}</p>
@@ -201,8 +198,8 @@ export function AIInsightsPage() {
           </div>
 
           <div className="mt-6 grid gap-4 xl:grid-cols-2">
-            <Card className="p-5">
-              <h2 className="font-display text-lg font-semibold">Monthly Attendance Insights</h2>
+            <Card className="p-6">
+              <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Monthly Attendance Insights</h2>
               {monthly ? (
                 <div className="mt-4 space-y-3 text-sm">
                   <p>Company attendance: {formatPercent(monthly.company_attendance_percentage)}</p>
@@ -228,8 +225,8 @@ export function AIInsightsPage() {
               )}
             </Card>
 
-            <Card className="p-5">
-              <h2 className="font-display text-lg font-semibold">Payroll Insights</h2>
+            <Card className="p-6">
+              <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Payroll Insights</h2>
               {payrollRows.length ? (
                 <div className="mt-4 max-h-72 space-y-2 overflow-y-auto text-sm">
                   {payrollRows.map((row, idx) => (

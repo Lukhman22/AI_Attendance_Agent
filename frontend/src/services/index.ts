@@ -1,3 +1,4 @@
+import axios from 'axios'
 import { api } from './apiClient'
 import type {
   AiDailyInsight,
@@ -9,6 +10,7 @@ import type {
   Employee,
   ExecutiveSummary,
   NotificationLog,
+  NotificationSettings,
   PayrollRecord,
   ReportGenerateRequest,
   ReportGenerateResponse,
@@ -19,25 +21,25 @@ export const attendanceApi = {
   upload: async (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    const { data } = await api.post<AttendanceIngestResult>('/api/v1/attendance/upload', form, {
+    const { data } = await api.post<AttendanceIngestResult>('/attendance/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     return data
   },
   dailySummary: async (workDate: string) => {
-    const { data } = await api.get<DailySummary>('/api/v1/attendance/daily-summary', {
+    const { data } = await api.get<DailySummary>('/attendance/daily-summary', {
       params: { work_date: workDate },
     })
     return data
   },
   records: async (workDate: string) => {
-    const { data } = await api.get<AttendanceRecord[]>('/api/v1/attendance/records', {
+    const { data } = await api.get<AttendanceRecord[]>('/attendance/records', {
       params: { work_date: workDate },
     })
     return data
   },
   stats: async (startDate: string, endDate: string) => {
-    const { data } = await api.get<AttendanceStats[]>('/api/v1/attendance/stats', {
+    const { data } = await api.get<AttendanceStats[]>('/attendance/stats', {
       params: { start_date: startDate, end_date: endDate },
     })
     return data
@@ -46,7 +48,7 @@ export const attendanceApi = {
 
 export const employeesApi = {
   list: async () => {
-    const { data } = await api.get<Employee[]>('/api/v1/employees')
+    const { data } = await api.get<Employee[]>('/employees')
     return data
   },
   upsert: async (payload: {
@@ -56,33 +58,33 @@ export const employeesApi = {
     monthly_salary: number
     working_days_per_month: number
   }) => {
-    const { data } = await api.post<Employee>('/api/v1/employees', payload)
+    const { data } = await api.post<Employee>('/employees', payload)
     return data
   },
   seedRules: async () => {
-    const { data } = await api.post('/api/v1/employees/salary-rules/seed')
+    const { data } = await api.post('/employees/salary-rules/seed')
     return data
   },
 }
 
 export const payrollApi = {
   generate: async (year: number, month: number) => {
-    const { data } = await api.post<PayrollRecord[]>('/api/v1/payroll/generate', { year, month })
+    const { data } = await api.post<PayrollRecord[]>('/payroll/generate', { year, month })
     return data
   },
   list: async (year: number, month: number) => {
-    const { data } = await api.get<PayrollRecord[]>(`/api/v1/payroll/${year}/${month}`)
+    const { data } = await api.get<PayrollRecord[]>(`/payroll/${year}/${month}`)
     return data
   },
 }
 
 export const reportsApi = {
   generate: async (payload: ReportGenerateRequest) => {
-    const { data } = await api.post<ReportGenerateResponse>('/api/v1/reports/generate', payload)
+    const { data } = await api.post<ReportGenerateResponse>('/reports/generate', payload)
     return data
   },
   download: async (filename: string) => {
-    const response = await api.get(`/api/v1/reports/download/${encodeURIComponent(filename)}`, {
+    const response = await api.get(`/reports/download/${encodeURIComponent(filename)}`, {
       responseType: 'blob',
     })
     return response.data as Blob
@@ -91,12 +93,32 @@ export const reportsApi = {
 
 export const notificationsApi = {
   send: async (message: string) => {
-    const { data } = await api.post('/api/v1/notifications/send', { message })
+    const { data } = await api.post('/notifications/send', { message })
     return data
   },
   logs: async (limit = 50) => {
-    const { data } = await api.get<NotificationLog[]>('/api/v1/notifications/logs', {
+    const { data } = await api.get<NotificationLog[]>('/notifications/logs', {
       params: { limit },
+    })
+    return data
+  },
+  getSettings: async () => {
+    const { data } = await api.get<NotificationSettings>('/notifications/settings')
+    return data
+  },
+  updateSettings: async (settings: NotificationSettings) => {
+    const { data } = await api.put<NotificationSettings>('/notifications/settings', settings)
+    return data
+  },
+  triggerDailySummary: async (date?: string) => {
+    const { data } = await api.post('/notifications/trigger/daily-summary', null, {
+      params: { date },
+    })
+    return data
+  },
+  triggerMonthlySummary: async (month: number, year: number) => {
+    const { data } = await api.post('/notifications/trigger/monthly-summary', null, {
+      params: { month, year },
     })
     return data
   },
@@ -104,32 +126,44 @@ export const notificationsApi = {
 
 export const aiApi = {
   dailyInsights: async (workDate: string) => {
-    const { data } = await api.get<AiDailyInsight>('/api/v1/ai/insights/daily', {
+    const { data } = await api.get<AiDailyInsight>('/ai/insights/daily', {
       params: { work_date: workDate },
     })
     return data
   },
   monthlyInsights: async (year: number, month: number) => {
-    const { data } = await api.get<AiMonthlyInsight>('/api/v1/ai/insights/monthly', {
+    const { data } = await api.get<AiMonthlyInsight>('/ai/insights/monthly', {
       params: { year, month },
     })
     return data
   },
   executiveSummary: async (workDate: string) => {
-    const { data } = await api.get<ExecutiveSummary>('/api/v1/ai/executive-summary', {
+    const { data } = await api.get<ExecutiveSummary>('/ai/executive-summary', {
       params: { work_date: workDate },
     })
     return data
   },
   alerts: async (params: { work_date?: string; year?: number; month?: number }) => {
-    const { data } = await api.get<SmartAlert[]>('/api/v1/alerts', { params })
+    const { data } = await api.get<SmartAlert[]>('/alerts', { params })
+    return data
+  },
+  ask: async (question: string, context?: { work_date?: string; year?: number; month?: number, employee_id?: number, compare_employee_id?: number, intent?: string, granularity?: string }) => {
+    const { data } = await api.post<{ question: string; answer: string; references: Record<string, any>, context?: any }>('/ai/ask', { question, context })
+    return data
+  },
+  transcribe: async (audioBlob: Blob) => {
+    const formData = new FormData()
+    formData.append('audio', audioBlob)
+    const { data } = await api.post<{ text: string }>('/ai/transcribe', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
     return data
   },
 }
 
 export const systemApi = {
   health: async () => {
-    const { data } = await api.get<{ status: string; environment: string }>('/health')
+    const { data } = await axios.get<{ status: string; environment: string }>('/health')
     return data
   },
 }

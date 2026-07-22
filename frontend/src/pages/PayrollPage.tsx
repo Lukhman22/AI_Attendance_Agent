@@ -5,7 +5,7 @@ import { payrollApi, reportsApi } from '../services'
 import { getErrorMessage } from '../services/apiClient'
 import type { PayrollRecord } from '../types/api'
 import { DataTable } from '../components/DataTable'
-import { Button, Card, Input, PageHeader, Skeleton } from '../components/ui'
+import { Button, Input, PageHeader, Skeleton } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { formatMoney, formatNumber, monthBounds } from '../utils/format'
 
@@ -94,7 +94,7 @@ export function PayrollPage() {
         }
       />
 
-      <Card className="mb-4 grid gap-3 p-4 sm:grid-cols-4">
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <label className="mb-1 block text-xs text-ink-500">Year</label>
           <Input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} />
@@ -120,7 +120,7 @@ export function PayrollPage() {
             <Download className="h-4 w-4" /> PDF
           </Button>
         </div>
-      </Card>
+      </div>
 
       {loading ? (
         <Skeleton className="h-96" />

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight, SearchX } from 'lucide-react'
 import { clsx } from '../utils/format'
 
 export function DataTable<T>({
@@ -46,24 +47,33 @@ export function DataTable<T>({
 
   if (!rows.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-ink-300 px-6 py-14 text-center dark:border-ink-700">
-        <p className="font-display text-lg font-semibold">{emptyTitle}</p>
-        <p className="mt-2 text-sm text-ink-500">{emptyDescription}</p>
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-ink-50/50 px-8 py-20 text-center dark:border-ink-800 dark:bg-ink-900/20">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-ink-100 text-ink-500 dark:bg-ink-800 dark:text-ink-400">
+          <SearchX className="h-6 w-6" />
+        </div>
+        <p className="font-display text-base font-semibold text-ink-900 dark:text-ink-100">{emptyTitle}</p>
+        <p className="mt-2 text-sm text-ink-500 dark:text-ink-400">{emptyDescription}</p>
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-ink-200 dark:border-ink-800">
+    <div className="flex flex-col overflow-hidden rounded-2xl border border-ink-200/60 bg-white shadow-sm dark:border-ink-800/60 dark:bg-ink-950">
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-ink-100/80 text-xs uppercase tracking-wide text-ink-500 dark:bg-ink-900 dark:text-ink-300">
-            <tr>
+          <thead>
+            <tr className="border-b border-ink-100 dark:border-ink-800">
               {columns.map((col) => (
-                <th key={col.key} className={clsx('px-4 py-3 font-medium', col.className)}>
+                <th 
+                  key={col.key} 
+                  className={clsx(
+                    'sticky top-0 z-10 bg-ink-50/95 px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-ink-500 backdrop-blur-md dark:bg-ink-900/95 dark:text-ink-400', 
+                    col.className
+                  )}
+                >
                   {col.sortable ? (
                     <button
-                      className="inline-flex items-center gap-1"
+                      className="group inline-flex items-center gap-1.5 hover:text-ink-900 transition-colors focus:outline-none dark:hover:text-ink-100"
                       onClick={() => {
                         if (sortKey === col.key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
                         else {
@@ -74,7 +84,13 @@ export function DataTable<T>({
                       }}
                     >
                       {col.header}
-                      {sortKey === col.key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''}
+                      <span className="flex items-center text-ink-400 transition-colors group-hover:text-ink-600 dark:text-ink-600 dark:group-hover:text-ink-400">
+                        {sortKey === col.key ? (
+                          sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />
+                        ) : (
+                          <ArrowUpDown className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100" />
+                        )}
+                      </span>
                     </button>
                   ) : (
                     col.header
@@ -83,14 +99,14 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-ink-100 dark:divide-ink-800/60">
             {current.map((row) => (
               <tr
                 key={rowKey(row)}
-                className="border-t border-ink-100 bg-white/70 dark:border-ink-800 dark:bg-ink-950/40"
+                className="group bg-white transition-colors hover:bg-ink-50/80 dark:bg-ink-950 dark:hover:bg-ink-900/50"
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={clsx('px-4 py-3 align-middle', col.className)}>
+                  <td key={col.key} className={clsx('px-6 py-4 align-middle text-[14px] text-ink-700 dark:text-ink-200', col.className)}>
                     {col.render(row)}
                   </td>
                 ))}
@@ -99,24 +115,31 @@ export function DataTable<T>({
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between border-t border-ink-100 bg-white/80 px-4 py-3 text-xs dark:border-ink-800 dark:bg-ink-950/60">
-        <span>
-          Showing {page * pageSize + 1}-{Math.min((page + 1) * pageSize, sorted.length)} of {sorted.length}
-        </span>
-        <div className="flex gap-2">
+      
+      {/* Pagination Footer */}
+      <div className="flex items-center justify-between border-t border-ink-100 bg-white px-6 py-4 dark:border-ink-800 dark:bg-ink-950">
+        <div className="text-[13px] text-ink-500 dark:text-ink-400">
+          Showing <span className="font-semibold text-ink-900 dark:text-ink-100">{sorted.length === 0 ? 0 : page * pageSize + 1}</span> to <span className="font-semibold text-ink-900 dark:text-ink-100">{Math.min((page + 1) * pageSize, sorted.length)}</span> of <span className="font-semibold text-ink-900 dark:text-ink-100">{sorted.length}</span> results
+        </div>
+        <div className="flex items-center gap-1.5">
           <button
-            className="rounded-lg border px-2 py-1 disabled:opacity-40 dark:border-ink-700"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:pointer-events-none disabled:opacity-40 dark:border-ink-700 dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-ink-100"
             disabled={page === 0}
             onClick={() => setPage((p) => p - 1)}
+            title="Previous Page"
           >
-            Prev
+            <ChevronLeft className="h-4 w-4" />
           </button>
+          <div className="flex h-8 items-center justify-center px-2 text-[13px] font-medium text-ink-700 dark:text-ink-300">
+            Page {page + 1} of {pageCount}
+          </div>
           <button
-            className="rounded-lg border px-2 py-1 disabled:opacity-40 dark:border-ink-700"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-ink-200 text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900 disabled:pointer-events-none disabled:opacity-40 dark:border-ink-700 dark:text-ink-400 dark:hover:bg-ink-800 dark:hover:text-ink-100"
             disabled={page >= pageCount - 1}
             onClick={() => setPage((p) => p + 1)}
+            title="Next Page"
           >
-            Next
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
       </div>

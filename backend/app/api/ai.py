@@ -1,18 +1,57 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
+from sqlalchemy.orm import Session
+import tempfile
+import os
 
 from ..ai.insights_service import HRInsightsService
+from ..ai.assistant import HRAssistant
 from ..schemas import (
     AiDailyInsightRead,
     AiMonthlyInsightRead,
     AiRecommendationRead,
     ExecutiveSummaryRead,
     SmartAlertRead,
+    AiAskRequest,
+    AiAskResponse,
 )
-from .deps import get_hr_insights_service
+from .deps import get_hr_insights_service, get_db
 
 router = APIRouter(prefix="/ai", tags=["ai"])
+
+@router.post("/transcribe")
+async def transcribe_audio(request: Request, audio: UploadFile = File(...)):
+    model = getattr(request.app.state, "whisper_model", None)
+    if not model:
+        raise HTTPException(status_code=503, detail="Whisper model unavailable")
+        
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
+            tmp_path = tmp.name
+            content = await audio.read()
+            tmp.write(content)
+            
+        segments, _ = model.transcribe(tmp_path, beam_size=5)
+        text = " ".join([segment.text for segment in segments]).strip()
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if 'tmp_path' in locals() and os.path.exists(tmp_path):
+            os.remove(tmp_path)
+            
+    return {"text": text}
+
+@router.post("/ask", response_model=AiAskResponse)
+def ask_assistant(
+    body: AiAskRequest,
+    db: Session = Depends(get_db)
+) -> AiAskResponse:
+    assistant = HRAssistant(db)
+    context_dict = body.context.model_dump() if body.context else {}
+    result = assistant.ask(body.question, context=context_dict)
+    return AiAskResponse(**result)
 
 
 @router.get("/insights/daily", response_model=AiDailyInsightRead)

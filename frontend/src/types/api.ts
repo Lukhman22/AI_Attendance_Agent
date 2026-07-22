@@ -198,3 +198,8 @@ export interface ActivityItem {
   detail: string
   at: string
 }
+export interface NotificationSettings {
+  id?: number;
+  telegram_enabled: boolean;
+  telegram_chat_id: string | null;
+}

@@ -1,6 +1,6 @@
 # AI Attendance Agent
 
-AI-powered HR Attendance & Payroll Middleware that sits beside existing biometric attendance systems. It ingests daily exports, applies HR salary rules, generates payroll, produces reports, and sends Telegram/WhatsApp notifications — without replacing your attendance hardware.
+AI-powered HR Attendance & Payroll Middleware that sits beside existing biometric attendance systems. It ingests daily exports, applies HR salary rules, generates payroll, produces reports, and sends Telegram notifications — without replacing your attendance hardware.
 
 ## Features
 
@@ -21,7 +21,6 @@ flowchart TB
     subgraph External
         BIO[Biometric System]
         TG[Telegram]
-        WA[WhatsApp]
     end
 
     subgraph Frontend
@@ -54,7 +53,6 @@ flowchart TB
     AI --> REPO
     REPO --> DB
     NOT --> TG
-    NOT --> WA
     RPT --> UI
 ```
 
@@ -70,7 +68,7 @@ AI_Attendance_Agent/
 │       ├── attendance/    # Parser, calculator, validator, tracker
 │       ├── payroll/       # Salary engine, rule engine, payroll generator
 │       ├── ai/            # Deterministic HR analyzer & insights
-│       ├── notifications/ # Telegram & WhatsApp providers
+│       ├── notifications/ # Telegram provider
 │       ├── dashboard/     # Daily summary & analytics
 │       ├── services/      # CSV ingest, reports, notifications
 │       ├── models/        # SQLAlchemy models
@@ -94,10 +92,11 @@ AI_Attendance_Agent/
 ### Prerequisites
 
 - Python 3.11+
-- Node.js 18+
+- Node.js 18+ (only needed for frontend development/building)
 - PostgreSQL 14+
+- A configured virtual environment (`venv`) with dependencies installed.
 
-### 1. Backend
+### Initial Installation
 
 ```bash
 cd AI_Attendance_Agent
@@ -110,24 +109,29 @@ cp .env.example .env
 
 alembic upgrade head
 python scripts/seed_demo.py
-
-uvicorn backend.app.main:app --reload
 ```
 
-API: http://localhost:8000  
-Swagger: http://localhost:8000/docs
+### Starting the Application (One-Click Launchers)
 
-### 2. Frontend
+The application includes one-click launchers for all major operating systems. These scripts automatically activate the virtual environment, start the server, and open the dashboard in your default browser (`http://127.0.0.1:8000`).
 
+- **Windows:** Double-click `Start Attendance System.bat`
+- **macOS:** Double-click `Launch Attendance System.command`
+- **Linux:** Run `./start.sh`
+
+*(Note: The React frontend production build is served directly by FastAPI. You do not need to run `npm run dev` to use the application.)*
+
+### Manual Start
+
+If you prefer starting the server manually from the terminal:
 ```bash
-cd frontend
-npm install
-npm run dev
+uvicorn backend.app.main:app
 ```
+API: http://127.0.0.1:8000  
+Swagger: http://127.0.0.1:8000/docs
+Dashboard: http://127.0.0.1:8000 (serves the React SPA)
 
-Dashboard: http://localhost:5173 (proxies `/api` to port 8000)
-
-### 3. Tests
+### Tests
 
 ```bash
 PYTHONPATH=. pytest tests/ -q
@@ -144,9 +148,9 @@ PYTHONPATH=. pytest tests/ -q
 | `BREAK_DURATION_REQUIRED` | Require break column in exports | `true` |
 | `DEFAULT_WORKING_DAYS_PER_MONTH` | Working days used for daily/hourly rate | `26` |
 | `DEFAULT_MONTHLY_SALARY` | Flat monthly salary applied to all employees in payroll | `30000` |
-| `NOTIFICATION_PROVIDER` | `telegram`, `whatsapp`, or `none` | `telegram` |
-| `TELEGRAM_TOKEN` / `TELEGRAM_CHAT_ID` | Telegram Bot API | — |
-| `WHATSAPP_*` | WhatsApp Cloud API credentials | — |
+| `NOTIFICATION_PROVIDER` | `telegram` or `none` | `telegram` |
+| `TELEGRAM_TOKEN` | Bot API Token | — |
+| `TELEGRAM_CHAT_ID` | HR Group ID | — |
 | `AI_AUTO_NOTIFY` | Auto-send daily/monthly summaries | `true` |
 | `REPORTS_DIR` | Report output directory | `reports` |
 | `UPLOADS_DIR` | Upload storage directory | `uploads` |

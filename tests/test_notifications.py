@@ -4,19 +4,12 @@ import httpx
 
 from backend.app.config import Settings
 from backend.app.notifications.telegram import TelegramNotificationProvider
-from backend.app.notifications.whatsapp import WhatsAppNotificationProvider
 
 
 def _settings(**kwargs) -> Settings:
     base = dict(
         telegram_token="telegram-token",
         telegram_chat_id="12345",
-        whatsapp_token="wa-token",
-        whatsapp_group_id="15551234567",
-        whatsapp_phone_number_id="phone-id",
-        whatsapp_template_name=None,
-        whatsapp_template_language="en_US",
-        whatsapp_api_version="v19.0",
     )
     base.update(kwargs)
     return Settings.model_construct(**base)
@@ -52,41 +45,9 @@ def test_telegram_provider_surfaces_api_errors():
     client.close()
 
 
-def test_whatsapp_text_and_template_payloads():
-    captured: list[dict] = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
-        captured.append(request.read().decode())
-        return httpx.Response(200, json={"messages": [{"id": "wamid.1"}]})
-
-    transport = httpx.MockTransport(handler)
-    client = httpx.Client(transport=transport)
-
-    text_provider = WhatsAppNotificationProvider(_settings(), client=client)
-    assert text_provider.send("Attendance alert").success is True
-    assert '"type": "text"' in captured[0] or '"type":"text"' in captured[0].replace(" ", "")
-
-    captured.clear()
-    template_provider = WhatsAppNotificationProvider(
-        _settings(whatsapp_template_name="hr_alert"),
-        client=client,
-    )
-    assert template_provider.send("Attendance alert").success is True
-    assert "template" in captured[0]
-    client.close()
 
 
 def test_providers_fail_without_credentials():
     telegram = TelegramNotificationProvider(Settings.model_construct(telegram_token=None, telegram_chat_id=None))
-    whatsapp = WhatsAppNotificationProvider(
-        Settings.model_construct(
-            whatsapp_token=None,
-            whatsapp_group_id=None,
-            whatsapp_phone_number_id=None,
-            whatsapp_template_name=None,
-            whatsapp_template_language="en_US",
-            whatsapp_api_version="v19.0",
-        )
-    )
     assert telegram.send("x").success is False
-    assert whatsapp.send("x").success is False

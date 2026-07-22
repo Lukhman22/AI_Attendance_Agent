@@ -9,7 +9,7 @@ from .NotificationLog import NotificationLog
 from .Payroll import Payroll
 from .SalaryRule import SalaryRule
 from .SmartAlert import SmartAlert
-
+from .NotificationSettings import NotificationSettings
 __all__ = [
     "AiDailyInsight",
     "AiMonthlyInsight",
@@ -22,4 +22,5 @@ __all__ = [
     "Payroll",
     "SalaryRule",
     "SmartAlert",
+    "NotificationSettings",
 ]

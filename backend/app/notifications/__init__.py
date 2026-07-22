@@ -1,7 +1,6 @@
 from .base import NotificationProvider, NotificationResult
 from .schedular import NotificationScheduler, SchedulerService
 from .telegram import TelegramNotificationProvider
-from .whatsapp import WhatsAppNotificationProvider
 
 __all__ = [
     "NotificationProvider",
@@ -9,5 +8,4 @@ __all__ = [
     "NotificationScheduler",
     "SchedulerService",
     "TelegramNotificationProvider",
-    "WhatsAppNotificationProvider",
 ]

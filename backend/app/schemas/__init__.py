@@ -186,3 +186,25 @@ class ExecutiveSummaryRead(ORMModel):
     payload: dict[str, Any]
     recommendations: list[AiRecommendationRead] = Field(default_factory=list)
     alerts: list[SmartAlertRead] = Field(default_factory=list)
+
+
+class AiAskContext(BaseModel):
+    work_date: date | None = None
+    year: int | None = None
+    month: int | None = None
+    employee_id: int | None = None
+    compare_employee_id: int | None = None
+    intent: str | None = None
+    granularity: str | None = None
+    input_source: str | None = None
+
+class AiAskRequest(BaseModel):
+    question: str = Field(..., min_length=2, max_length=1000)
+    context: AiAskContext | None = None
+
+
+class AiAskResponse(BaseModel):
+    question: str
+    answer: str
+    references: dict[str, Any] = Field(default_factory=dict)
+    context: AiAskContext | None = None

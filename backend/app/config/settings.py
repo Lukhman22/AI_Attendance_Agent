@@ -128,19 +128,11 @@ class Settings(BaseModel):
     )
 
     # Notifications
-    notification_provider: Literal["telegram", "whatsapp", "none"] = Field(
+    notification_provider: Literal["telegram", "none"] = Field(
         default_factory=lambda: _env("NOTIFICATION_PROVIDER", "telegram").lower()  # type: ignore[arg-type]
     )
     telegram_token: str | None = Field(default_factory=lambda: _env("TELEGRAM_TOKEN"))
     telegram_chat_id: str | None = Field(default_factory=lambda: _env("TELEGRAM_CHAT_ID"))
-    whatsapp_token: str | None = Field(default_factory=lambda: _env("WHATSAPP_TOKEN"))
-    whatsapp_group_id: str | None = Field(default_factory=lambda: _env("WHATSAPP_GROUP_ID"))
-    whatsapp_phone_number_id: str | None = Field(default_factory=lambda: _env("WHATSAPP_PHONE_NUMBER_ID"))
-    whatsapp_template_name: str | None = Field(default_factory=lambda: _env("WHATSAPP_TEMPLATE_NAME"))
-    whatsapp_template_language: str = Field(
-        default_factory=lambda: _env("WHATSAPP_TEMPLATE_LANGUAGE", "en_US")
-    )
-    whatsapp_api_version: str = Field(default_factory=lambda: _env("WHATSAPP_API_VERSION", "v19.0"))
     report_time: str = Field(default_factory=lambda: _env("REPORT_TIME", "18:30"))
 
     # Upload safety
@@ -194,3 +186,6 @@ class Settings(BaseModel):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+settings = get_settings()
