@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import re
 from sqlalchemy.orm import Session
 
-from ..config import settings
+from ..config.settings import settings
 from ..database.repositories import EmployeeRepository, PayrollRepository, AttendanceRepository
 from ..dashboard.summary import DailySummaryService
 from ..dashboard.analytics import AnalyticsService
