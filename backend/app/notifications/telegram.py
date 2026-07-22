@@ -15,9 +15,15 @@ TELEGRAM_MAX_LENGTH = 4096
 class TelegramNotificationProvider(NotificationProvider):
     name = "telegram"
 
-    def __init__(self, settings: Settings, client: httpx.Client | None = None) -> None:
-        self._token = settings.telegram_token
-        self._chat_id = settings.telegram_chat_id
+    def __init__(
+    self,
+    settings: Settings,
+    client: httpx.Client | None = None,
+    token: str | None = None,
+    chat_id: str | None = None,
+) -> None:
+        self._token = token or settings.telegram_token
+        self._chat_id = chat_id or settings.telegram_chat_id
         self._client = client
 
     def send(self, message: str, *, recipient: str | None = None) -> NotificationResult:

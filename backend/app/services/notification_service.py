@@ -79,7 +79,10 @@ def _dispatch_message(db: Session, message: str) -> dict:
     # Send via Telegram if enabled
     if db_settings.telegram_enabled and db_settings.telegram_chat_id:
         try:
-            telegram_provider = TelegramNotificationProvider(settings)
+            telegram_provider = TelegramNotificationProvider(
+            settings,
+            token=db_settings.telegram_token,
+            chat_id=db_settings.telegram_chat_id,)
             result = telegram_provider.send(message, recipient=db_settings.telegram_chat_id)
             repo.create(
                 provider=result.provider,
