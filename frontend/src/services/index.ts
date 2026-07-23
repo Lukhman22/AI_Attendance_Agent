@@ -5,6 +5,7 @@ import type {
   AiMonthlyInsight,
   AttendanceIngestResult,
   AttendanceRecord,
+  AttendanceAnnotation,
   AttendanceStats,
   DailySummary,
   Employee,
@@ -42,6 +43,26 @@ export const attendanceApi = {
     const { data } = await api.get<AttendanceStats[]>('/attendance/stats', {
       params: { start_date: startDate, end_date: endDate },
     })
+    return data
+  },
+}
+
+export const annotationsApi = {
+  list: async (workDate?: string, startDate?: string, endDate?: string) => {
+    const { data } = await api.get<AttendanceAnnotation[]>('/annotations', {
+      params: { work_date: workDate, start_date: startDate, end_date: endDate },
+    })
+    return data
+  },
+  upsert: async (employeeId: number, workDate: string, annotationType: string, notes?: string) => {
+    const { data } = await api.put<AttendanceAnnotation>(`/annotations/${employeeId}/${workDate}`, {
+      annotation_type: annotationType,
+      notes,
+    })
+    return data
+  },
+  delete: async (annotationId: number) => {
+    const { data } = await api.delete(`/annotations/${annotationId}`)
     return data
   },
 }

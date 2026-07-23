@@ -148,7 +148,7 @@ def e2e_env(tmp_path, monkeypatch):
 def test_health_and_home(e2e_env):
     client, _, _ = e2e_env
     assert client.get("/health").json()["status"] == "ok"
-    assert "running" in client.get("/").json()["message"].lower()
+    assert b"html" in client.get("/").content.lower()
 
 
 def test_upload_summary_payroll_reports_ai(e2e_env):

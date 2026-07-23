@@ -17,7 +17,7 @@ from ..config import Settings
 from ..core.exceptions import ApplicationError
 from ..dashboard.analytics import AnalyticsService
 from ..dashboard.summary import DailySummaryService
-from ..database.repositories import IgnoredAttendanceRepository, AttendanceRepository
+from ..database.repositories import IgnoredAttendanceRepository, AttendanceRepository, AttendanceAnnotationRepository
 from ..payroll.payroll_generator import PayrollGenerator
 import calendar as cal
 
@@ -45,7 +45,6 @@ HEADER_MAPPING = {
     "average_daily_hours": "Average Daily Hours",
     "attendance_percentage": "Attendance %",
     "work_date": "Date",
-    "employee_id": "Employee ID / Code",
     "reason": "Reason",
     "section": "Section",
     "missing_hours": "Missing Hours",
@@ -120,12 +119,14 @@ class ReportService:
         end_date: date | None,
     ) -> list[dict[str, Any]]:
         ignored_repo = IgnoredAttendanceRepository(self._db)
+        annotation_repo = AttendanceAnnotationRepository(self._db)
 
         if report_type == "daily_summary":
             if work_date is None:
                 raise ApplicationError("work_date is required for daily_summary", code="report_params_invalid")
             
             records = AttendanceRepository(self._db).list_for_date(work_date)
+            annotations = {a.employee_id: a.annotation_type for a in annotation_repo.list_for_date(work_date)}
             
             # Validation: ensure records exist
             if not records:
@@ -143,15 +144,14 @@ class ReportService:
                     "overtime_hours": r.overtime_hours,
                     "status": r.status,
                     "daily_deduction": r.daily_deduction,
-                    "employee_id": "",
-                    "reason": "",
+                    "reason": annotations.get(r.employee_id, "-"),
                 }
                 for r in records
             ]
             return self._append_ignored_section(
                 rows,
                 [
-                    {"employee_id": r.employee_code, "reason": r.reason}
+                    {"employee_code": r.employee_code, "reason": r.reason}
                     for r in ignored_repo.list_for_date(work_date)
                 ],
             )
@@ -179,8 +179,7 @@ class ReportService:
                     "missing_hours": r.missing_hours,
                     "salary_deduction": r.salary_deduction,
                     "final_salary": r.final_salary,
-                    "employee_id": "",
-                    "reason": "",
+                    "reason": "-",
                 }
                 for r in records
             ]
@@ -189,7 +188,7 @@ class ReportService:
             return self._append_ignored_section(
                 rows,
                 [
-                    {"employee_id": r.employee_code, "reason": r.reason}
+                    {"employee_code": r.employee_code, "reason": r.reason}
                     for r in ignored_repo.list_for_range(start, end)
                 ],
             )
@@ -203,11 +202,11 @@ class ReportService:
             if not rows:
                 raise ApplicationError("No attendance stats found for this range", code="no_data_found")
 
-            padded = [{**row, "employee_id": "", "reason": ""} for row in rows]
+            padded = [{**row, "reason": "-"} for row in rows]
             return self._append_ignored_section(
                 padded,
                 [
-                    {"employee_id": r.employee_code, "reason": r.reason}
+                    {"employee_code": r.employee_code, "reason": r.reason}
                     for r in ignored_repo.list_for_range(start_date, end_date)
                 ],
             )
@@ -218,17 +217,17 @@ class ReportService:
     def _append_ignored_section(rows: list[dict[str, Any]], ignored: list[dict[str, str]]) -> list[dict[str, Any]]:
         if not ignored: return rows
         if not rows:
-            return [{"section": "Ignored Attendance Records", "employee_id": item["employee_id"], "reason": item["reason"]} for item in ignored]
+            return [{"section": "Ignored Attendance Records", "employee_code": item.get("employee_code", ""), "reason": item.get("reason", "")} for item in ignored]
         keys = list(rows[0].keys())
-        for key in ("section", "employee_id", "reason"):
+        for key in ("section", "employee_code", "reason"):
             if key not in keys:
                 keys.append(key)
                 for row in rows: row.setdefault(key, "")
         output = list(rows)
-        header = {key: "" for key in keys}; header["section"] = "Ignored Attendance Records"; header["employee_id"] = "Employee ID"; header["reason"] = "Reason"
+        header = {key: "" for key in keys}; header["section"] = "Ignored Attendance Records"; header["employee_code"] = "Employee ID"; header["reason"] = "Reason"
         output.append(header)
         for item in ignored:
-            line = {key: "" for key in keys}; line["section"] = "ignored"; line["employee_id"] = item["employee_id"]; line["reason"] = item["reason"]
+            line = {key: "" for key in keys}; line["section"] = "ignored"; line["employee_code"] = item.get("employee_code", ""); line["reason"] = item.get("reason", "")
             output.append(line)
         return output
 
@@ -257,7 +256,7 @@ class ReportService:
             sheet.append(display_headers)
             
         for row in rows:
-            sheet.append([self._stringify(row.get(k)) for k in keys])
+            sheet.append(self._format_row_human(row, keys))
             
         # Professional styling
         if rows:
@@ -317,14 +316,36 @@ class ReportService:
             fontName="Helvetica-Bold"
         )
 
-        story = [Paragraph(title, styles["Heading1"]), Spacer(1, 12)]
+        
+        # Professional header
+        title_style = ParagraphStyle(
+            "title_style",
+            parent=styles["Heading1"],
+            fontSize=18,
+            textColor=colors.HexColor("#1f2937"),
+            spaceAfter=6
+        )
+        meta_style = ParagraphStyle(
+            "meta_style",
+            parent=styles["Normal"],
+            fontSize=9,
+            textColor=colors.HexColor("#4b5563"),
+            spaceAfter=20
+        )
+        
+        now = datetime.now()
+        meta_text = f"Generated: {now.strftime('%B %d, %Y')} at {now.strftime('%I:%M %p')}"
+        story = [
+            Paragraph(title, title_style),
+            Paragraph(meta_text, meta_style),
+        ]
         
         keys = list(rows[0].keys()) if rows else []
         display_headers = [HEADER_MAPPING.get(k, k.replace("_", " ").title()) for k in keys]
         
         data = [[Paragraph(h, header_style) for h in display_headers]]
         for row in rows:
-            data.append([Paragraph(self._stringify(row.get(k)), cell_style) for k in keys])
+            data.append([Paragraph(v, cell_style) for v in self._format_row_human(row, keys)])
             
         import logging
         logger = logging.getLogger(__name__)
@@ -349,6 +370,46 @@ class ReportService:
         story.append(table)
         document.build(story)
         return path
+
+    @staticmethod
+    def _format_hours(value: Any) -> str:
+        if value is None or value == "":
+            return ""
+        try:
+            val = float(value)
+            if val == 0:
+                return "0m"
+            hours = int(val)
+            minutes = int(round((val - hours) * 60))
+            if minutes == 60:
+                hours += 1
+                minutes = 0
+            if hours > 0 and minutes > 0:
+                return f"{hours}h {minutes:02d}m"
+            elif hours > 0:
+                return f"{hours}h"
+            else:
+                return f"{minutes}m"
+        except (ValueError, TypeError):
+            return str(value)
+
+    @staticmethod
+    def _format_status(status: Any) -> str:
+        if not status:
+            return ""
+        return str(status).replace("_", " ").title()
+
+    def _format_row_human(self, row: dict[str, Any], keys: list[str]) -> list[str]:
+        formatted = []
+        for k in keys:
+            val = row.get(k)
+            if k in ["work_duration_hours", "break_duration_hours", "overtime_hours", "total_hours_worked", "missing_hours", "average_daily_hours"]:
+                formatted.append(self._format_hours(val))
+            elif k == "status":
+                formatted.append(self._format_status(val))
+            else:
+                formatted.append(self._stringify(val))
+        return formatted
 
     @staticmethod
     def _stringify(value: Any) -> str:

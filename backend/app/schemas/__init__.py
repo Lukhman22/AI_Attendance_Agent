@@ -9,6 +9,9 @@ class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+from .attendance_annotation import AttendanceAnnotationBase, AttendanceAnnotationRead, AttendanceAnnotationUpsert
+
+
 class EmployeeCreate(BaseModel):
     employee_code: str
     name: str

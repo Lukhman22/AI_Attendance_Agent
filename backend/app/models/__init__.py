@@ -2,6 +2,7 @@ from .AiDailyInsight import AiDailyInsight
 from .AiMonthlyInsight import AiMonthlyInsight
 from .AiRecommendation import AiRecommendation
 from .Attendance import Attendance
+from .AttendanceAnnotation import AttendanceAnnotation
 from .Employee import Employee
 from .ExecutiveSummary import ExecutiveSummary
 from .IgnoredAttendance import IgnoredAttendance
@@ -15,6 +16,7 @@ __all__ = [
     "AiMonthlyInsight",
     "AiRecommendation",
     "Attendance",
+    "AttendanceAnnotation",
     "Employee",
     "ExecutiveSummary",
     "IgnoredAttendance",

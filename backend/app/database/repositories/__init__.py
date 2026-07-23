@@ -5,6 +5,7 @@ from .salary_rule_repository import SalaryRuleRepository
 from .notification_repository import NotificationRepository
 from .insight_repository import InsightRepository
 from .ignored_attendance_repository import IgnoredAttendanceRepository
+from .attendance_annotation_repository import AttendanceAnnotationRepository
 
 __all__ = [
     "EmployeeRepository",
@@ -14,4 +15,5 @@ __all__ = [
     "NotificationRepository",
     "InsightRepository",
     "IgnoredAttendanceRepository",
+    "AttendanceAnnotationRepository",
 ]

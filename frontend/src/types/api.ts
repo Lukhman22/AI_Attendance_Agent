@@ -8,6 +8,15 @@ export interface Employee {
   is_active: boolean
 }
 
+export interface AttendanceAnnotation {
+  id: number
+  employee_id: number
+  work_date: string
+  annotation_type: string
+  notes?: string | null
+  created_at: string
+}
+
 export interface AttendanceRecord {
   id: number
   employee_code: string | null
@@ -21,6 +30,7 @@ export interface AttendanceRecord {
   status: string
   missing_hours: number | string
   daily_deduction: number | string
+  annotation?: AttendanceAnnotation | null
 }
 
 export interface AttendanceIngestResult {
