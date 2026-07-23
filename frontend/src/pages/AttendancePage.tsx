@@ -78,66 +78,6 @@ function FileUploadZone({ onUpload, uploading, success }: { onUpload: (file: Fil
           </p>
         </>
       )}
-      <Modal
-        title={selectedRecord?.annotation ? "Edit Reason" : "Add Reason"}
-        isOpen={annotationModalOpen}
-        onClose={() => setAnnotationModalOpen(false)}
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">
-              Employee: {selectedRecord?.employee_name} ({selectedRecord?.employee_code})
-            </label>
-            <label className="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1 mt-4">
-              Reason Type
-            </label>
-            <Select 
-              value={annotationType} 
-              onChange={(e) => setAnnotationType(e.target.value)}
-              className="w-full"
-            >
-              {ANNOTATION_OPTIONS.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </Select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-ink-700 dark:text-ink-300 mb-1">
-              Notes (Required if 'Other')
-            </label>
-            <textarea
-              className="w-full rounded-lg border border-ink-300 bg-white px-3 py-2 text-sm text-ink-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-ink-700 dark:bg-ink-950 dark:text-ink-100 placeholder-ink-400"
-              rows={3}
-              value={annotationNotes}
-              onChange={(e) => setAnnotationNotes(e.target.value)}
-              placeholder="Optional details..."
-            />
-          </div>
-          
-          <div className="flex justify-end gap-3 pt-4">
-            {selectedRecord?.annotation && (
-              <Button 
-                variant="outline" 
-                className="text-rose-600 border-rose-200 hover:bg-rose-50 mr-auto"
-                onClick={handleDeleteAnnotation}
-                disabled={savingAnnotation}
-              >
-                Delete
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => setAnnotationModalOpen(false)} disabled={savingAnnotation}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSaveAnnotation} 
-              disabled={savingAnnotation || (annotationType === 'Other' && !annotationNotes.trim())}
-            >
-              {savingAnnotation ? 'Saving...' : 'Save Reason'}
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }
@@ -460,7 +400,7 @@ export function AttendancePage() {
                   }}
                 >
                   {r.annotation ? (
-                    <Badge tone="info" className="bg-brand-100 text-brand-800 dark:bg-brand-900/40 dark:text-brand-300">
+                    <Badge tone="sky">
                       {r.annotation.annotation_type}
                     </Badge>
                   ) : (
@@ -514,7 +454,7 @@ export function AttendancePage() {
           <div className="flex justify-end gap-3 pt-4">
             {selectedRecord?.annotation && (
               <Button 
-                variant="outline" 
+                variant="secondary" 
                 className="text-rose-600 border-rose-200 hover:bg-rose-50 mr-auto"
                 onClick={handleDeleteAnnotation}
                 disabled={savingAnnotation}
@@ -522,7 +462,7 @@ export function AttendancePage() {
                 Delete
               </Button>
             )}
-            <Button variant="outline" onClick={() => setAnnotationModalOpen(false)} disabled={savingAnnotation}>
+            <Button variant="secondary" onClick={() => setAnnotationModalOpen(false)} disabled={savingAnnotation}>
               Cancel
             </Button>
             <Button 
