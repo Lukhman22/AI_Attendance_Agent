@@ -34,7 +34,7 @@ def delete_annotation(
     db.commit()
     return {"status": "deleted"}
 
-@router.get("/", response_model=List[AttendanceAnnotationRead])
+@router.get("", response_model=List[AttendanceAnnotationRead])
 def list_annotations(
     work_date: Optional[date] = None,
     start_date: Optional[date] = None,

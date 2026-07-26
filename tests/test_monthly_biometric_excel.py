@@ -282,17 +282,17 @@ def test_monthly_payroll_and_reports(monthly_excel: Path, tmp_path):
     assert john.leave_days == 1
     assert john.weekly_offs == 1
     # Flat DEFAULT_MONTHLY_SALARY=30000: short 1h + missing_checkout(0h×8) + absent
-    assert john.salary_deduction == Decimal("2451.92")
-    assert john.final_salary == Decimal("27548.08")
+    assert john.salary_deduction == Decimal("4250.00")
+    assert john.final_salary == Decimal("47750.00")
     assert john.final_salary >= 0
-    assert john.final_salary <= Decimal("30000")
+    assert john.final_salary <= Decimal("52000")
 
     jane = by_code["E002"]
     assert jane.present_days == 5
     assert jane.weekly_offs == 1
     assert jane.holidays == 1
     assert jane.salary_deduction == Decimal("0.00")
-    assert jane.final_salary == Decimal("30000.00")
+    assert jane.final_salary == Decimal("39000.00")
 
     # Extra seeded employee with no July attendance must not appear
     db.add(

@@ -6,4 +6,5 @@ class NotificationSettings(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     telegram_enabled = Column(Boolean, default=False)
+    telegram_bot_token = Column(String, nullable=True)
     telegram_chat_id = Column(String, nullable=True)

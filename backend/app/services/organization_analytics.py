@@ -20,7 +20,11 @@ class OrganizationAnalyticsService:
             svc = HRInsightsService(self.db, self.settings)
             summary = svc.get_executive_summary(target_date)
             if not summary: return f"No executive summary available for {target_date.isoformat()}."
-            return summary.summary_text
+            ans = summary.summary_text
+            if self.settings.openai_api_key:
+                from ..ai.llm import LLMService
+                ans = LLMService(self.settings.openai_api_key).generate_response(q_lower, ans)
+            return ans
             
         if intent == "month_summary":
             svc = HRInsightsService(self.db, self.settings)
@@ -43,7 +47,7 @@ class OrganizationAnalyticsService:
                 avg_att = sum(s["attendance_percentage"] for s in stats) / total
                 highest = max(stats, key=lambda s: s["attendance_percentage"])
                 lowest = min(stats, key=lambda s: s["attendance_percentage"])
-                avg_hours = sum(s.get("average_hours", 0) for s in stats) / total
+                avg_hours = sum(s.get("average_daily_hours", 0) for s in stats) / total if total > 0 else 0
                 total_hours = sum(s.get("total_worked_hours", 0) for s in stats)
                 below_50 = len([s for s in stats if s["attendance_percentage"] < 50])
                 above_90 = len([s for s in stats if s["attendance_percentage"] > 90])
@@ -61,6 +65,10 @@ class OrganizationAnalyticsService:
                 ans += f"Total Worked Hours: {total_hours:.1f}\n"
                 ans += f"Employees below 50%: {below_50}\n"
                 ans += f"Employees above 90%: {above_90}"
+                
+                if self.settings.openai_api_key:
+                    from ..ai.llm import LLMService
+                    ans = LLMService(self.settings.openai_api_key).generate_response(q_lower, ans)
                 return ans
 
         if intent == "payroll_summary":
@@ -86,6 +94,10 @@ class OrganizationAnalyticsService:
             ans += f"Lowest Salary: {get_name(lowest.employee_id)} ({lowest.final_salary})\n"
             ans += f"Highest Deduction: {get_name(highest_ded.employee_id)} ({highest_ded.salary_deduction})\n"
             ans += f"Lowest Deduction: {get_name(lowest_ded.employee_id)} ({lowest_ded.salary_deduction})"
+            
+            if self.settings.openai_api_key:
+                from ..ai.llm import LLMService
+                ans = LLMService(self.settings.openai_api_key).generate_response(q_lower, ans)
             return ans
 
         # Statistics / specific queries

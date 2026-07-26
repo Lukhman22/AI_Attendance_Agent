@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 class NotificationSettingsBase(BaseModel):
     telegram_enabled: bool = False
+    telegram_bot_token: Optional[str] = None
     telegram_chat_id: Optional[str] = None
 
 

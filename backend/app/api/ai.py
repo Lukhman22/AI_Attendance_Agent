@@ -24,8 +24,16 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 async def transcribe_audio(request: Request, audio: UploadFile = File(...)):
     model = getattr(request.app.state, "whisper_model", None)
     if not model:
-        raise HTTPException(status_code=503, detail="Whisper model unavailable")
-        
+        try:
+            from faster_whisper import WhisperModel
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info("Lazy loading Whisper model...")
+            model = WhisperModel("base", device="cpu", compute_type="int8")
+            request.app.state.whisper_model = model
+            logger.info("Whisper model loaded successfully.")
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"Whisper model failed to load: {e}")
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".webm") as tmp:
             tmp_path = tmp.name

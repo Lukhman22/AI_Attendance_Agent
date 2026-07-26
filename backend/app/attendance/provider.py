@@ -35,6 +35,9 @@ class FileAttendanceProvider(AttendanceProvider):
         self._filename = filename.lower()
 
     def fetch_records(self) -> list[RawAttendanceRow]:
+        if self._filename.endswith('.pdf'):
+            from .pdf_parser import read_pdf_attendance
+            return read_pdf_attendance(self._file_obj, self._filename)
         from .csv_reader import read_attendance_file
 
         return read_attendance_file(self._file_obj, self._filename)

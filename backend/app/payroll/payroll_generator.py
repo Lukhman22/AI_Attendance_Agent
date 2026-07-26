@@ -11,6 +11,7 @@ from ..config import Settings
 from ..database.repositories import AttendanceRepository, EmployeeRepository, PayrollRepository
 from ..models import Payroll
 from .salary_engine import SalaryEngine
+from .salary_resolver import resolve_salary
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,6 @@ class PayrollGenerator:
         start = date(year, month, 1)
         end = date(year, month, calendar.monthrange(year, month)[1])
 
-        monthly_salary = self._default_monthly_salary()
         working_days = self._default_working_days()
         required_hours = self._required_hours()
 
@@ -61,9 +61,11 @@ class PayrollGenerator:
             present_days += sum(1 for r in records if r.status == "missing_checkout")
 
             total_hours = sum((r.work_duration_hours or Decimal("0") for r in records), Decimal("0"))
+            emp_salary = resolve_salary(employee)
+            
             breakdown = self._salary_engine.calculate_from_attendance(
                 records,
-                monthly_salary=monthly_salary,
+                monthly_salary=emp_salary,
                 working_days=working_days,
                 required_hours=required_hours,
             )
@@ -88,11 +90,10 @@ class PayrollGenerator:
 
         self._db.commit()
         logger.info(
-            "Payroll generated for %s/%s — employees=%s monthly_salary=%s",
+            "Payroll generated for %s/%s — employees=%s",
             month,
             year,
             len(results),
-            monthly_salary,
         )
         return self._payroll.list_for_period(year, month)
 

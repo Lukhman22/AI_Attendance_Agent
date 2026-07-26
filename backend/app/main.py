@@ -27,16 +27,39 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("%s startup", settings.app_name)
         
+        # 0. Initialize Database automatically
+        from .database.session import engine
+        from .database.base import Base
         try:
-            from faster_whisper import WhisperModel
-            logger.info("Loading Whisper model...")
-            app.state.whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
-            logger.info("Whisper model loaded successfully.")
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database initialized successfully.")
         except Exception as e:
-            logger.error(f"Failed to load Whisper model: {e}")
-            app.state.whisper_model = None
+            logger.error(f"Failed to initialize database: {e}")
+        
+        # 1. Startup Notification
+        from .database.session import SessionLocal
+        from .services.notification_service import NotificationService
+        from .api.settings import get_or_create_settings
+        
+        db = SessionLocal()
+        try:
+            get_or_create_settings(db) # Bootstrap if missing
+            notification_svc = NotificationService(db, settings)
+            notification_svc.send("✅ AI Attendance Agent started successfully.")
+        except Exception as e:
+            logger.info(f"Startup notification skipped or failed: {e}")
+        finally:
+            db.close()
+
+        # 2. Start Scheduler
+        from .notifications.schedular import NotificationScheduler
+        scheduler = NotificationScheduler(settings)
+        scheduler.start()
+        
+        app.state.whisper_model = None
             
         yield
+        scheduler.shutdown()
         logger.info("%s shutdown", settings.app_name)
 
     configured_app = FastAPI(
@@ -79,7 +102,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if full_path.startswith("api/"):
             raise HTTPException(status_code=404, detail="Not Found")
             
-        dist_path = Path(__file__).parent.parent.parent / "frontend" / "dist"
+        import sys
+        if getattr(sys, 'frozen', False):
+            # In PyInstaller, the frontend is bundled in the MEIPASS directory under 'frontend/dist'
+            dist_path = Path(sys._MEIPASS) / "frontend" / "dist"
+        else:
+            dist_path = Path(__file__).parent.parent.parent / "frontend" / "dist"
         
         # If the requested file exists (like JS/CSS assets, favicon), serve it
         file_path = dist_path / full_path

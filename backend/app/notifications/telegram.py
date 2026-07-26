@@ -17,13 +17,12 @@ class TelegramNotificationProvider(NotificationProvider):
 
     def __init__(
     self,
-    settings: Settings,
     client: httpx.Client | None = None,
     token: str | None = None,
     chat_id: str | None = None,
 ) -> None:
-        self._token = token or settings.telegram_token
-        self._chat_id = chat_id or settings.telegram_chat_id
+        self._token = token
+        self._chat_id = chat_id
         self._client = client
 
     def send(self, message: str, *, recipient: str | None = None) -> NotificationResult:
@@ -32,7 +31,7 @@ class TelegramNotificationProvider(NotificationProvider):
             return NotificationResult(
                 success=False,
                 provider=self.name,
-                error="Telegram token or chat id is not configured",
+                error="Telegram notifications are not configured.",
             )
         if not message or not message.strip():
             return NotificationResult(success=False, provider=self.name, error="Message is empty")
@@ -48,17 +47,28 @@ class TelegramNotificationProvider(NotificationProvider):
                     json={"chat_id": chat_id, "text": chunk, "disable_web_page_preview": True},
                 )
                 payload = self._safe_json(response)
+                
+                # Enhanced Logging (No Bot Token)
+                logger.info(
+                    "Telegram Notification Attempt | Type: Direct Message | "
+                    f"Destination Chat ID: {chat_id} | Delivery Status: {response.status_code} | "
+                    f"Telegram API Response: {payload}"
+                )
+
                 if response.status_code >= 400 or not payload.get("ok", False):
                     description = payload.get("description") or response.text
+                    error_msg = f"Telegram API error ({response.status_code}): {description}"
+                    logger.error(f"Telegram Notification Failed | Reason: {error_msg}")
                     return NotificationResult(
                         success=False,
                         provider=self.name,
-                        error=f"Telegram API error ({response.status_code}): {description}",
+                        error=error_msg,
                     )
             return NotificationResult(success=True, provider=self.name)
         except httpx.HTTPError as exc:
-            logger.exception("Telegram send failed")
-            return NotificationResult(success=False, provider=self.name, error=str(exc))
+            error_msg = str(exc)
+            logger.exception(f"Telegram Notification Failed | Reason: HTTP Exception: {error_msg}")
+            return NotificationResult(success=False, provider=self.name, error=error_msg)
         finally:
             if owns_client:
                 client.close()

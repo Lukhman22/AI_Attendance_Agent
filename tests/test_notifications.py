@@ -24,7 +24,7 @@ def test_telegram_provider_sends_real_api_payload():
 
     transport = httpx.MockTransport(handler)
     client = httpx.Client(transport=transport)
-    provider = TelegramNotificationProvider(_settings(), client=client)
+    provider = TelegramNotificationProvider(token="telegram-token", chat_id="12345", client=client)
     result = provider.send("Daily HR summary ready")
     assert result.success is True
     assert len(calls) == 1
@@ -38,7 +38,7 @@ def test_telegram_provider_surfaces_api_errors():
         return httpx.Response(400, json={"ok": False, "description": "chat not found"})
 
     client = httpx.Client(transport=httpx.MockTransport(handler))
-    provider = TelegramNotificationProvider(_settings(), client=client)
+    provider = TelegramNotificationProvider(token="telegram-token", chat_id="12345", client=client)
     result = provider.send("Hello")
     assert result.success is False
     assert "chat not found" in (result.error or "")
@@ -49,5 +49,5 @@ def test_telegram_provider_surfaces_api_errors():
 
 
 def test_providers_fail_without_credentials():
-    telegram = TelegramNotificationProvider(Settings.model_construct(telegram_token=None, telegram_chat_id=None))
+    telegram = TelegramNotificationProvider(token=None, chat_id=None)
     assert telegram.send("x").success is False

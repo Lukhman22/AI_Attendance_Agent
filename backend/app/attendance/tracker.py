@@ -10,6 +10,7 @@ from ..config import Settings
 from ..database.repositories import AttendanceRepository, EmployeeRepository, IgnoredAttendanceRepository
 from ..models import Attendance, Employee
 from ..payroll.salary_engine import SalaryEngine
+from ..payroll.salary_resolver import resolve_salary
 from ..services.employee_directory import EmployeeDirectory
 from .calculator import AttendanceCalculator
 from .provider import AttendanceProvider, RawAttendanceRow
@@ -80,16 +81,21 @@ class AttendanceTracker:
             self._ignored.delete_for_employee_date(row.employee_code, row.work_date)
             employees_touched.add(employee.employee_code)
 
-            if (employee.monthly_salary or Decimal("0")) <= 0:
+            emp_salary = resolve_salary(employee)
+            if emp_salary == Decimal("35000.00") and getattr(employee, "monthly_salary", Decimal("0")) <= 0:
                 warning = (
                     f"Employee {employee.employee_code} has no monthly salary configured; "
-                    "attendance stored, deductions will be zero until salary is set."
+                    "using temporary demo salary (₹35,000) for daily calculations."
                 )
                 if warning not in salary_warnings:
                     salary_warnings.append(warning)
                     logger.warning(warning)
-
-            daily_salary, hourly_salary = self._salary_rates(employee)
+            
+            daily_salary, hourly_salary = self._salary_engine.daily_and_hourly(
+                emp_salary,
+                employee.working_days_per_month or 26,
+            )
+            
             normalized = self._calculator.calculate_daily(
                 row,
                 hourly_salary=hourly_salary,

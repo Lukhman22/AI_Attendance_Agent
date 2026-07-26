@@ -169,11 +169,11 @@ export function AIAssistant({ context: dashboardContext }: { context?: { work_da
       if (isVoice) {
         speakText(response.answer)
       }
-    } catch (error) {
+    } catch (error: any) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'ai',
-        content: "Sorry, I encountered an error while trying to process your request.",
+        content: error?.response?.data?.detail || error?.message || "Sorry, I encountered an error while trying to process your request.",
         isError: true,
         timestamp: Date.now(),
       }

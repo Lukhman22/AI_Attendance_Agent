@@ -355,12 +355,12 @@ export function AttendancePage() {
             {
               key: 'in',
               header: 'Check In',
-              render: (r) => r.check_in || '—',
+              render: (r) => r.check_in || '-',
             },
             {
               key: 'out',
               header: 'Check Out',
-              render: (r) => r.check_out || '—',
+              render: (r) => r.check_out || '-',
             },
             {
               key: 'hours',

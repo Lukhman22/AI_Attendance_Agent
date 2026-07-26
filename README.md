@@ -1,269 +1,510 @@
 # AI Attendance Agent
 
-AI-powered HR Attendance & Payroll Middleware that sits beside existing biometric attendance systems. It ingests daily exports, applies HR salary rules, generates payroll, produces reports, and sends Telegram notifications — without replacing your attendance hardware.
-
-## Features
-
-| Area | Capability |
-|------|------------|
-| **Attendance** | CSV/Excel ingest including the company monthly biometric block export (IN/OUT/WORK/Break/OT/Status per day), work-hour calculation, break tracking, leave/absent handling |
-| **Payroll** | Proportional salary deductions, monthly payroll generation, cap at monthly salary |
-| **HR Rules** | Min 8h workday, no overtime pay above 8h, absent = full daily deduction |
-| **Reports** | Daily summary, monthly payroll, attendance stats — CSV, Excel, PDF with browser download |
-| **Notifications** | Daily executive summary after upload; monthly payroll summary after generation |
-| **AI Insights** | Deterministic anomaly detection, factual findings, executive summaries (no chatbot) |
-| **Dashboard** | React console for attendance, employees, payroll, reports, notifications, settings |
-
-## Architecture
-
-```mermaid
-flowchart TB
-    subgraph External
-        BIO[Biometric System]
-        TG[Telegram]
-    end
-
-    subgraph Frontend
-        UI[React Dashboard]
-    end
-
-    subgraph Backend["FastAPI Middleware"]
-        API[API Routes]
-        SVC[Services]
-        ATT[Attendance Parser / Calculator]
-        PAY[Payroll / Salary Engine]
-        AI[HR Analyzer / Insights]
-        RPT[Report Generator]
-        NOT[Notification Service]
-        REPO[Repositories]
-    end
-
-    DB[(PostgreSQL)]
-
-    BIO -->|CSV / Excel / API| API
-    UI --> API
-    API --> SVC
-    SVC --> ATT
-    SVC --> PAY
-    SVC --> AI
-    SVC --> RPT
-    SVC --> NOT
-    ATT --> REPO
-    PAY --> REPO
-    AI --> REPO
-    REPO --> DB
-    NOT --> TG
-    RPT --> UI
-```
-
-**Layering:** API → Service → Repository → Database. Business logic lives in services and domain modules, not in route handlers.
-
-## Folder Structure
-
-```
-AI_Attendance_Agent/
-├── backend/
-│   └── app/
-│       ├── api/           # FastAPI routes
-│       ├── attendance/    # Parser, calculator, validator, tracker
-│       ├── payroll/       # Salary engine, rule engine, payroll generator
-│       ├── ai/            # Deterministic HR analyzer & insights
-│       ├── notifications/ # Telegram provider
-│       ├── dashboard/     # Daily summary & analytics
-│       ├── services/      # CSV ingest, reports, notifications
-│       ├── models/        # SQLAlchemy models
-│       ├── database/      # Session, repositories
-│       └── main.py
-├── frontend/
-│   └── src/
-│       ├── pages/         # Dashboard, Attendance, Employees, Payroll, etc.
-│       ├── components/  # App shell, tables, UI primitives
-│       └── services/      # API client
-├── sample_data/           # Demo CSV files
-├── scripts/
-│   └── seed_demo.py       # Load sample data into database
-├── tests/
-├── uploads/               # Saved attendance uploads
-└── reports/               # Generated report files
-```
-
-## Setup
-
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+ (only needed for frontend development/building)
-- PostgreSQL 14+
-- A configured virtual environment (`venv`) with dependencies installed.
-
-### Initial Installation
-
-```bash
-cd AI_Attendance_Agent
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-cp .env.example .env
-# Edit DATABASE_URL and notification credentials
-
-alembic upgrade head
-python scripts/seed_demo.py
-```
-
-### Starting the Application (One-Click Launchers)
-
-The application includes one-click launchers for all major operating systems. These scripts automatically activate the virtual environment, start the server, and open the dashboard in your default browser (`http://127.0.0.1:8000`).
-
-- **Windows:** Double-click `Start Attendance System.bat`
-- **macOS:** Double-click `Launch Attendance System.command`
-- **Linux:** Run `./start.sh`
-
-*(Note: The React frontend production build is served directly by FastAPI. You do not need to run `npm run dev` to use the application.)*
-
-### Manual Start
-
-If you prefer starting the server manually from the terminal:
-```bash
-uvicorn backend.app.main:app
-```
-API: http://127.0.0.1:8000  
-Swagger: http://127.0.0.1:8000/docs
-Dashboard: http://127.0.0.1:8000 (serves the React SPA)
-
-### Tests
-
-```bash
-PYTHONPATH=. pytest tests/ -q
-```
-
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DATABASE_URL` | PostgreSQL connection string | — |
-| `MIN_WORKING_HOURS` | Minimum payable work hours | `8` |
-| `MAX_PAYABLE_HOURS` | Hours cap for salary (no OT pay) | `8` |
-| `OVERTIME_PAID` | Pay for hours above max | `false` |
-| `BREAK_DURATION_REQUIRED` | Require break column in exports | `true` |
-| `DEFAULT_WORKING_DAYS_PER_MONTH` | Working days used for daily/hourly rate | `26` |
-| `DEFAULT_MONTHLY_SALARY` | Flat monthly salary applied to all employees in payroll | `30000` |
-| `NOTIFICATION_PROVIDER` | `telegram` or `none` | `telegram` |
-| `TELEGRAM_TOKEN` | Bot API Token | — |
-| `TELEGRAM_CHAT_ID` | HR Group ID | — |
-| `AI_AUTO_NOTIFY` | Auto-send daily/monthly summaries | `true` |
-| `REPORTS_DIR` | Report output directory | `reports` |
-| `UPLOADS_DIR` | Upload storage directory | `uploads` |
-| `EMPLOYEE_DIRECTORY_FILE` | Local salary/master CSV (ID, name, dept, monthly salary) | `sample_data/employees.csv` |
-| `AUTO_REGISTER_EMPLOYEES_FROM_ATTENDANCE` | Register IDs/names/depts found in attendance exports (`false` = strict ignore mode) | `true` |
-| `OPENAI_API_KEY` | Optional — polish executive summary wording only | — |
-
-See `.env.example` for the full list.
-
-## API Documentation
-
-Base path: `/api/v1`
-
-### Attendance
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/attendance/upload` | Upload CSV/Excel biometric export |
-| `POST` | `/attendance/ingest-api` | Ingest JSON attendance payload |
-| `GET` | `/attendance/daily-summary?work_date=` | Daily attendance summary |
-| `GET` | `/attendance/records?work_date=` | Attendance records for a date |
-| `GET` | `/attendance/stats?start_date=&end_date=` | Per-employee stats |
-
-### Employees & Rules
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/employees` | List employees |
-| `POST` | `/employees` | Create or update employee |
-| `POST` | `/employees/salary-rules/seed` | Seed default HR rules |
-
-### Payroll
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/payroll/generate` | Generate monthly payroll (+ auto-notify) |
-| `GET` | `/payroll/{year}/{month}` | List payroll for period |
-
-### Reports
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/reports/generate` | Generate CSV/Excel/PDF report |
-| `GET` | `/reports/download/{filename}` | Download generated report |
-
-### AI Insights
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/ai/insights/daily?work_date=` | Daily insight & findings |
-| `GET` | `/ai/insights/monthly?year=&month=` | Monthly insight |
-| `GET` | `/ai/executive-summary?work_date=` | Executive summary text |
-| `GET` | `/alerts` | Smart alerts (optional date filters) |
-
-### Notifications
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/notifications/send` | Send manual message |
-| `GET` | `/notifications/logs` | Notification history |
-
-## Screenshots
-
-> Placeholder — add screenshots after running the dashboard:
->
-> - `docs/screenshots/dashboard.png`
-> - `docs/screenshots/attendance.png`
-> - `docs/screenshots/payroll.png`
-> - `docs/screenshots/ai-insights.png`
-
-## Sample Workflow
-
-1. **Seed data:** `python scripts/seed_demo.py` loads 5 employees and July attendance.
-2. **Upload monthly export:** Attendance page → upload `sample_data/monthly_attendance_july_2026.xlsx` (company biometric block format) or the flat CSVs.
-3. **Review:** Dashboard shows present/absent counts; AI Insights shows anomalies.
-4. **Payroll:** Payroll page → generate July 2026 payroll.
-5. **Reports:** Reports page → generate monthly payroll PDF → auto-download.
-6. **Notifications:** Daily summary sent on upload; monthly summary sent on payroll generate (when `AI_AUTO_NOTIFY=true`).
-
-### Supported attendance file layouts
-
-1. **Flat daily table** (CSV / XLS / XLSX) — one row per employee per day.
-2. **Company monthly biometric Excel** (XLS / XLSX) — each employee is a block with metadata (`Employee Code`, `Present`, `WO`, `HL`, `LV`, `Absent`, `Total Work+OT`, `Total OT`) and day columns `1–31` with stacked rows `IN`, `OUT`, `WORK`, `Break`, `OT`, `Status`. Parsed by the same `csv_reader.read_attendance_file` into normalized daily records; `WORK` drives payable hours, `OT` is reporting-only.
-
-File type is detected from **file content** (OLE magic for `.xls`, ZIP magic for `.xlsx`), not only the filename extension, so mislabeled biometric exports still import correctly. Upload formats: **CSV, XLS, XLSX**. Report downloads remain **CSV, Excel, PDF** (PDF is not an upload format).
-
-### Employee identity vs salary
-
-- **Attendance export** supplies Employee ID / Empcode, Name, and Department — that is the attendance identity source.
-- **Payroll salary** uses the flat `DEFAULT_MONTHLY_SALARY` for every employee in the selected month (configurable via `.env`).
-- With `AUTO_REGISTER_EMPLOYEES_FROM_ATTENDANCE=true` (default), employees found in the export are registered automatically.
-- Set `AUTO_REGISTER_EMPLOYEES_FROM_ATTENDANCE=false` to ignore unknown IDs (strict safety mode).
-
-## HR Rules (Verified)
-
-- Payroll includes **only** employees with uploaded attendance for the selected month
-- All employees share **one** configurable `DEFAULT_MONTHLY_SALARY` for payroll
-- Minimum work hours = **8**
-- Hours **>= 8** → no deduction; hours **< 8** → `(8 − worked) × hourly rate`
-- Hourly rate = `Monthly Salary / Working Days / 8`
-- Absent → **full daily** salary deduction (`Monthly / Working Days`)
-- Leave / weekly off / holiday = **no** deduction
-- Deductions use **only** actual uploaded attendance rows (no manufactured missing days)
-- Final salary is clamped: deductions **never exceed** monthly salary; final **never negative**
-
-## Future Improvements
-
-- Scheduled cron jobs for end-of-day reports (helper exists, not wired)
-- Runtime HR rule editing via API
-- Per-employee attendance history pagination
-- Holiday calendar management
-- Multi-tenant company support
+> AI-Powered Attendance Management, Payroll Automation & HR Analytics Middleware
 
 ---
 
-See [docs/AUDIT_REPORT.md](docs/AUDIT_REPORT.md) for the full production audit.
+# Overview
+
+AI Attendance Agent is an enterprise-oriented HR middleware application developed during an internship to automate attendance processing, payroll generation, workforce analytics, reporting, and executive insights.
+
+The system is designed to integrate with an organization's existing biometric attendance software rather than replacing it.
+
+Currently, attendance data is imported through exported attendance files (CSV, Excel, and supported report formats) generated by the company's biometric attendance software. The architecture is intentionally modular so that future versions can integrate directly with biometric devices or attendance software through REST APIs.
+
+The objective of the system is to eliminate repetitive HR tasks while providing intelligent attendance analytics and automated payroll processing.
+
+---
+
+# Project Objectives
+
+The primary goals of AI Attendance Agent are:
+
+- Automate attendance processing
+- Automate payroll calculation
+- Reduce manual HR effort
+- Eliminate payroll calculation errors
+- Generate attendance reports
+- Generate payroll reports
+- Provide AI-powered attendance analytics
+- Generate executive summaries
+- Notify HR through Telegram Bot
+- Build a scalable architecture for future AI enhancements
+
+---
+
+# Problem Statement
+
+Many organizations still rely on exporting attendance data from biometric software into Excel sheets where HR manually:
+
+- Calculates employee working hours
+- Computes salaries
+- Applies leave deductions
+- Generates reports
+- Tracks attendance trends
+- Creates management summaries
+
+This process is:
+
+- Time consuming
+- Error prone
+- Difficult to scale
+- Repetitive
+- Lacking intelligent analytics
+
+AI Attendance Agent automates this complete workflow.
+
+---
+
+# High-Level Architecture
+
+```
+Employee
+        │
+        ▼
+Biometric Fingerprint Device
+        │
+        ▼
+Attendance Software
+        │
+CSV / Excel Export
+        │
+        ▼
+AI Attendance Agent
+        │
+ ┌──────┼────────────┬────────────┐
+ ▼      ▼            ▼            ▼
+Attendance Payroll  AI Engine   Reports
+ Module   Engine
+        │
+        ▼
+Database
+        │
+ ┌──────┼───────────────┐
+ ▼      ▼               ▼
+Dashboard Reports Telegram Bot
+```
+
+---
+
+# System Components
+
+## Frontend
+
+Frameworks
+
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- Recharts
+
+Responsibilities
+
+- Dashboard
+- Attendance visualization
+- Payroll visualization
+- Reports
+- AI Insights
+- Executive summaries
+
+---
+
+## Backend
+
+Framework
+
+FastAPI
+
+Responsibilities
+
+- Attendance processing
+- Payroll engine
+- AI analytics
+- Report generation
+- Notification service
+- Database interaction
+- REST APIs
+
+---
+
+## Database
+
+Supported Databases
+
+- SQLite
+- PostgreSQL
+
+Stores
+
+- Employee information
+- Attendance records
+- Payroll
+- Salary rules
+- AI insights
+- Executive summaries
+- Reports metadata
+- Alerts
+
+---
+
+# Current Workflow
+
+1. Employee checks in using biometric fingerprint.
+
+2. Attendance software records attendance.
+
+3. HR exports attendance records.
+
+Supported input includes:
+
+- CSV
+- Excel
+- Attendance reports generated from the biometric software
+
+4. HR uploads the attendance file into AI Attendance Agent.
+
+5. System validates:
+
+- Employee IDs
+- Dates
+- Working hours
+- Attendance status
+- Leave records
+
+6. Attendance data is normalized.
+
+7. Data is stored inside the database.
+
+8. Payroll engine calculates salary.
+
+9. AI analytics engine processes attendance.
+
+10. Reports are generated.
+
+11. Telegram notifications are sent.
+
+12. Dashboard is updated.
+
+---
+
+# Attendance Processing Engine
+
+Current capabilities
+
+- CSV upload
+- Excel upload
+- Attendance parsing
+- Employee validation
+- Attendance normalization
+- Status mapping
+- Working hour calculation
+- Leave calculation
+- Attendance statistics
+
+---
+
+# Payroll Engine
+
+The payroll engine automatically calculates salaries using configurable company rules.
+
+Current implementation includes
+
+- Working hour calculation
+- Daily attendance analysis
+- Monthly attendance calculation
+- Salary generation
+- Leave deductions
+- Attendance deductions
+- Payroll summary
+
+The payroll engine uses attendance data as the source of truth.
+
+---
+
+# AI Analytics Engine
+
+The AI module is deterministic (rule-based).
+
+It currently generates
+
+Daily Insights
+
+Examples
+
+- Employees absent today
+- Employees arriving late
+- Attendance summary
+- Attendance percentages
+
+Monthly Insights
+
+Examples
+
+- Monthly attendance trends
+- Frequent absentees
+- Leave statistics
+- Department summaries
+
+Executive Summary
+
+Provides management-friendly summaries for HR and executives.
+
+Smart Alerts
+
+Automatically detects
+
+- High absenteeism
+- Late attendance
+- Attendance anomalies
+
+Recommendations
+
+Suggests possible HR actions based on attendance trends.
+
+---
+
+# Reports
+
+The system generates reports including
+
+- Daily Attendance Report
+- Monthly Attendance Report
+- Payroll Report
+- Attendance Summary
+- Executive Summary
+
+Supported formats
+
+- CSV
+- Excel
+- PDF
+
+---
+
+# Notification Service
+
+Current implementation
+
+Telegram Bot API
+
+The system can send
+
+- Attendance summaries
+- Payroll completion notifications
+- Executive summaries
+- Report notifications
+- HR alerts
+
+Future versions may support
+
+- WhatsApp Business API
+- Email
+- SMS
+- Microsoft Teams
+- Slack
+
+---
+
+# REST APIs
+
+Major backend APIs include
+
+Attendance
+
+- Upload attendance
+- Daily summary
+- Attendance statistics
+
+Payroll
+
+- Generate payroll
+- Payroll summary
+
+Reports
+
+- Generate report
+
+AI
+
+- Daily insights
+- Monthly insights
+- Executive summary
+
+Notifications
+
+- Telegram notifications
+
+---
+
+# Data Storage
+
+The application stores
+
+Employees
+
+Attendance
+
+Payroll
+
+Salary rules
+
+Attendance statistics
+
+AI insights
+
+Executive summaries
+
+Alerts
+
+Reports
+
+Supported databases
+
+- SQLite
+- PostgreSQL
+
+Generated reports are stored separately in
+
+- CSV
+- Excel
+- PDF
+
+---
+
+# Technology Stack
+
+Frontend
+
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
+- Recharts
+
+Backend
+
+- Python
+- FastAPI
+- SQLAlchemy
+- Pydantic
+- Pandas
+- NumPy
+
+Database
+
+- SQLite
+- PostgreSQL
+
+Reporting
+
+- OpenPyXL
+- ReportLab
+
+Notifications
+
+- Telegram Bot API
+
+Development
+
+- Git
+- GitHub
+- VS Code
+- PyInstaller (currently used for experimental desktop packaging)
+
+---
+
+# Current Features
+
+✅ Attendance Upload
+
+✅ Employee Validation
+
+✅ Attendance Processing
+
+✅ Attendance Analytics
+
+✅ Payroll Automation
+
+✅ AI Insights
+
+✅ Executive Summary
+
+✅ Report Generation
+
+✅ Dashboard
+
+✅ Telegram Notifications
+
+---
+
+# Current Limitations
+
+Desktop packaging is currently under development.
+
+The application runs correctly in the development environment.
+
+However, generating a standalone executable that works reliably across different macOS and Windows machines remains an unresolved deployment challenge due to platform-specific native Python dependencies, packaging compatibility, and operating system code-signing requirements.
+
+This limitation affects only software distribution and does not affect the application's functionality during development or demonstration.
+
+---
+
+# Future Roadmap
+
+Planned enhancements include
+
+- Direct biometric device API integration
+- Real-time attendance synchronization
+- Cloud deployment
+- Docker support
+- AWS deployment
+- Azure deployment
+- Employee mobile application
+- Face Recognition Attendance
+- GPS Attendance
+- Employee self-service portal
+- Leave management
+- Role-based authentication
+- Multi-company support
+- Machine Learning analytics
+- Predictive workforce analytics
+- AI chatbot for HR
+- WhatsApp Business API
+- Email notifications
+- Microsoft Teams integration
+- Slack integration
+
+---
+
+# Project Status
+
+Current Status
+
+Functional in development environment.
+
+Implemented
+
+- Attendance processing
+- Payroll automation
+- AI analytics
+- Executive summaries
+- Reports
+- Telegram notifications
+- Dashboard
+
+Pending
+
+- Production-grade desktop packaging
+- Cloud deployment
+- Direct biometric API integration
+
+---
+
+# Conclusion
+
+AI Attendance Agent is a scalable HR automation middleware designed to transform manual attendance management into an intelligent, automated workflow.
+
+The system automates attendance processing, payroll calculation, AI-driven analytics, report generation, and HR notifications while maintaining compatibility with existing biometric attendance infrastructure.
+
+Its modular architecture enables future expansion into cloud-native HR management, predictive analytics, and enterprise-scale workforce intelligence.

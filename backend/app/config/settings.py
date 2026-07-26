@@ -121,10 +121,10 @@ class Settings(BaseModel):
         default_factory=lambda: _env("ATTENDANCE_PROVIDER", "file").lower()  # type: ignore[arg-type]
     )
     uploads_dir: str = Field(
-        default_factory=lambda: _env("UPLOADS_DIR", str(PROJECT_ROOT / "uploads"))
+        default_factory=lambda: _env("UPLOADS_DIR", str(Path.home() / ".ai_attendance_agent" / "uploads"))
     )
     reports_dir: str = Field(
-        default_factory=lambda: _env("REPORTS_DIR", str(PROJECT_ROOT / "reports"))
+        default_factory=lambda: _env("REPORTS_DIR", str(Path.home() / ".ai_attendance_agent" / "reports"))
     )
 
     # Notifications
@@ -140,7 +140,7 @@ class Settings(BaseModel):
     allowed_upload_extensions: list[str] = Field(
         default_factory=lambda: _env_csv(
             "ALLOWED_UPLOAD_EXTENSIONS",
-            [".csv", ".xlsx", ".xlsm", ".xls"],
+            [".csv", ".xlsx", ".xlsm", ".xls", ".pdf"],
         )
     )
 
@@ -174,13 +174,11 @@ class Settings(BaseModel):
         if self.database_url:
             return self.database_url
 
-        user = quote_plus(self.postgres_user)
-        password = quote_plus(self.postgres_password)
-        database = quote_plus(self.postgres_db)
-        return (
-            f"postgresql+psycopg2://{user}:{password}"
-            f"@{self.postgres_server}:{self.postgres_port}/{database}"
-        )
+        # Desktop standalone default: SQLite in user's home directory
+        app_dir = Path.home() / ".ai_attendance_agent"
+        app_dir.mkdir(parents=True, exist_ok=True)
+        db_path = app_dir / "database.sqlite3"
+        return f"sqlite:///{db_path}"
 
 
 @lru_cache

@@ -91,6 +91,12 @@ def e2e_env(tmp_path, monkeypatch):
     app.dependency_overrides[get_settings] = lambda: settings
     app.dependency_overrides[get_app_settings] = lambda: settings
 
+    from backend.app.auth.rbac import check_rbac
+    from backend.app.models import User as UserModel
+    def mock_check_rbac():
+        return UserModel(id=999, username="admin", email="admin@test.com", role="ADMIN", is_active=True)
+    app.dependency_overrides[check_rbac] = mock_check_rbac
+
     # Seed employees with salaries so deductions are meaningful
     db = TestingSessionLocal()
     db.add_all(
@@ -188,9 +194,9 @@ def test_upload_summary_payroll_reports_ai(e2e_env):
     rows = payroll.json()
     assert len(rows) == 5
     john = next(r for r in rows if r["employee"]["name"] == "John Doe")
-    assert Decimal(str(john["salary_deduction"])) == Decimal("108.17")
-    assert Decimal(str(john["final_salary"])) == Decimal("29891.83")
-    assert all(Decimal(str(r["final_salary"])) <= Decimal("30000") for r in rows)
+    assert Decimal(str(john["salary_deduction"])) == Decimal("187.50")
+    assert Decimal(str(john["final_salary"])) == Decimal("51812.50")
+    assert all(Decimal(str(r["final_salary"])) <= Decimal("52000") for r in rows)
     listed = client.get("/api/v1/payroll/2026/7")
     assert listed.status_code == 200
     assert len(listed.json()) == 5

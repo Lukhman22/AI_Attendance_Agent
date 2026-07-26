@@ -25,10 +25,15 @@ class NotificationService:
         self._repo = NotificationRepository(db)
         self._provider = self._resolve_provider(settings)
 
-    @staticmethod
-    def _resolve_provider(settings: Settings) -> NotificationProvider | None:
+    def _resolve_provider(self, settings: Settings) -> NotificationProvider | None:
         if settings.notification_provider == "telegram":
-            return TelegramNotificationProvider(settings)
+            # Check DB settings
+            db_settings = self._db.query(NotificationSettings).first()
+            if db_settings and db_settings.telegram_enabled and db_settings.telegram_bot_token and db_settings.telegram_chat_id:
+                return TelegramNotificationProvider(
+                    token=db_settings.telegram_bot_token, 
+                    chat_id=db_settings.telegram_chat_id
+                )
         return None
 
     def send(self, message: str, *, recipient: str | None = None) -> dict:
@@ -80,7 +85,7 @@ def _dispatch_message(db: Session, message: str) -> dict:
     if db_settings.telegram_enabled and db_settings.telegram_chat_id:
         try:
             telegram_provider = TelegramNotificationProvider(
-                settings,
+                token=db_settings.telegram_bot_token,
                 chat_id=db_settings.telegram_chat_id,
             )
             result = telegram_provider.send(message, recipient=db_settings.telegram_chat_id)

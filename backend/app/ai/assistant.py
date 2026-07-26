@@ -11,6 +11,7 @@ from .insights_service import HRInsightsService
 import calendar
 
 from .classification import QueryClassificationEngine
+from .llm import LLMService
 
 class EmployeeEngine:
     @staticmethod
@@ -70,11 +71,25 @@ class HRAssistant:
         # ----------------------------------------------------
         # 1. Pipeline Execution
         # ----------------------------------------------------
-        explicit_intent = QueryClassificationEngine.detect_what(q_lower)
+        llm = LLMService(settings.openai_api_key)
+        nlu_res = llm.detect_intent(q_lower) if settings.openai_api_key else {}
+        
+        explicit_intent = nlu_res.get("intent") or QueryClassificationEngine.detect_what(q_lower)
+        scope = nlu_res.get("scope") or QueryClassificationEngine.detect_who(q_lower)
+        
         unique_emps = EmployeeEngine.resolve(q_lower, employees_list)
         
         # Date processing
         is_date_explicit, has_daily, has_monthly, found_month_num, found_year, offset_days = QueryClassificationEngine.detect_time(q_lower)
+        
+        time_data = nlu_res.get("time", {})
+        if time_data.get("is_explicit"):
+            is_date_explicit = True
+            has_daily = time_data.get("has_daily", False)
+            has_monthly = time_data.get("has_monthly", False)
+            found_month_num = time_data.get("month")
+            found_year = time_data.get("year")
+            offset_days = time_data.get("offset_days", 0)
         
         dash_date = context.get("work_date")
         if isinstance(dash_date, str): base_date = date.fromisoformat(dash_date)
@@ -106,7 +121,6 @@ class HRAssistant:
         # 2. Clarification Engine & Conversation Continuity
         # ----------------------------------------------------
         intent = explicit_intent
-        scope = QueryClassificationEngine.detect_who(q_lower)
         
         # If no explicit intent was provided, we inherit the previous intent if possible
         if not is_intent_explicit:
@@ -289,7 +303,13 @@ class HRAssistant:
         if scope == "EMPLOYEE":
             if intent == "payroll" or intent == "why":
                 payroll = self.payroll_repo.get_for_employee_period(target_emp.id, year, month)
-                if not payroll: return build_response(f"Payroll not generated for {target_emp.name} in {year}-{month:02d}.", service="Payroll Service")
+                if not payroll:
+                    from ..payroll.payroll_generator import PayrollGenerator
+                    from ..payroll.salary_engine import SalaryEngine
+                    PayrollGenerator(self.db, SalaryEngine(), settings).generate_month(year, month)
+                    payroll = self.payroll_repo.get_for_employee_period(target_emp.id, year, month)
+                
+                if not payroll: return build_response(f"Payroll could not be generated for {target_emp.name} in {year}-{month:02d} (no attendance data).", service="Payroll Service")
                 
                 start_date = date(year, month, 1)
                 end_date = date(year, month, calendar.monthrange(year, month)[1])
@@ -304,11 +324,28 @@ class HRAssistant:
                         reasons.append(reason)
                         
                 if intent == "why":
-                    if not reasons: return build_response(f"No specific deductions for {target_emp.name} in {year}-{month:02d}.", service="Payroll Service")
-                    return build_response(f"Salary deduction reasons for {target_emp.name}:\n* " + "\n* ".join(reasons), service="Payroll Service")
+                    ans = f"Salary deduction explanation for {target_emp.name}:\n"
+                    from ..payroll.salary_resolver import resolve_salary
+                    emp_salary = resolve_salary(target_emp)
+                    ans += f"- Base Salary: {emp_salary}\n"
+                    ans += f"- Absent Days: {payroll.absent_days}\n"
+                    
+                    underworked_days = sum(1 for r in records if (r.work_duration_hours or 0) > 0 and (r.work_duration_hours or 0) < 8)
+                    overtime_days = sum(1 for r in records if (r.work_duration_hours or 0) > 8)
+                    ans += f"- Underworked Days: {underworked_days}\n"
+                    ans += f"- Overtime Days: {overtime_days} (does not increase salary per HR rules)\n"
+                    
+                    total_days = payroll.present_days + payroll.absent_days + payroll.leave_days
+                    percentage = (payroll.present_days / total_days * 100) if total_days > 0 else 0
+                    ans += f"- Attendance %: {percentage:.1f}%\n"
+                    ans += f"- Total Deduction: {payroll.salary_deduction}\n"
+                    ans += f"- Final Salary: {payroll.final_salary}\n"
+                    
+                    if settings.openai_api_key: ans = llm.generate_response(question, ans)
+                    return build_response(ans, {"employee_id": target_emp.id, "payroll_month": f"{year}-{month:02d}"}, service="Payroll Service")
                         
-                ans = f"Payroll details for {target_emp.name} ({year}-{month:02d}):\n- Salary: {payroll.final_salary}\n- Deductions: {payroll.salary_deduction}\n- Present: {payroll.present_days}\n- Absent: {payroll.absent_days}\n"
-                if reasons: ans += "\nDeduction Reasons:\n* " + "\n* ".join(reasons)
+                ans = f"Payroll details for {target_emp.name} ({year}-{month:02d}):\n- Base Salary: {resolve_salary(target_emp)}\n- Deductions: {payroll.salary_deduction}\n- Final Salary: {payroll.final_salary}\n- Present: {payroll.present_days}\n- Absent: {payroll.absent_days}\n"
+                if settings.openai_api_key: ans = llm.generate_response(question, ans)
                 return build_response(ans, {"employee_id": target_emp.id, "payroll_month": f"{year}-{month:02d}"}, service="Payroll Service")
 
             if intent in ["absent", "leave", "hours", "attendance", "missing_punch", "late", "early", "attendance_summary"]:
@@ -344,7 +381,9 @@ class HRAssistant:
             if granularity == "daily":
                 record = self.attendance_repo.get_by_employee_and_date(target_emp.id, target_date)
                 if not record: return build_response(f"No records found for {target_emp.name} on {target_date.isoformat()}.", service="General HR Service")
-                return build_response(f"{target_emp.name} was {record.status} on {target_date.isoformat()}.", {"employee_id": target_emp.id}, service="General HR Service")
+                raw_ans = f"{target_emp.name} was {record.status} on {target_date.isoformat()}."
+                if settings.openai_api_key: raw_ans = llm.generate_response(question, raw_ans)
+                return build_response(raw_ans, {"employee_id": target_emp.id}, service="General HR Service")
             else:
                 svc = AnalyticsService(self.db, settings)
                 start_date = date(year, month, 1)
@@ -352,6 +391,8 @@ class HRAssistant:
                 stats = svc.attendance_stats(start_date, end_date)
                 stat = next((s for s in stats if s["employee_id"] == target_emp.id), None)
                 if not stat: return build_response(f"No data for {target_emp.name} in {year}-{month:02d}.", service="General HR Service")
-                return build_response(f"{target_emp.name} has {stat['attendance_percentage']}% attendance in {year}-{month:02d}.", {"employee_id": target_emp.id}, service="General HR Service")
+                raw_ans = f"{target_emp.name} has {stat['attendance_percentage']}% attendance in {year}-{month:02d}."
+                if settings.openai_api_key: raw_ans = llm.generate_response(question, raw_ans)
+                return build_response(raw_ans, {"employee_id": target_emp.id}, service="General HR Service")
 
         return build_response("I could not determine a specific response for your query. Please rephrase.")

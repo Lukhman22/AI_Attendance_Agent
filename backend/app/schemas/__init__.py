@@ -2,7 +2,8 @@ from datetime import date, time
 from decimal import Decimal
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from ..payroll.salary_resolver import resolve_salary_value
 
 
 class ORMModel(BaseModel):
@@ -28,6 +29,11 @@ class EmployeeRead(ORMModel):
     monthly_salary: Decimal
     working_days_per_month: int
     is_active: bool
+
+    @field_validator("monthly_salary", mode="before")
+    @classmethod
+    def resolve_salary(cls, v: Any) -> Decimal:
+        return resolve_salary_value(v)
 
 
 class AttendanceRecordRead(ORMModel):

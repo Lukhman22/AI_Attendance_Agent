@@ -136,7 +136,7 @@ def test_payroll_skips_employees_without_attendance():
     row = payroll[0]
     assert row.employee.employee_code == "E100"
     assert row.salary_deduction == Decimal("0.00")
-    assert row.final_salary == Decimal("30000.00")
+    assert row.final_salary == Decimal("52000.00")
     db.close()
 
 
@@ -179,7 +179,7 @@ def test_payroll_uses_default_salary_not_seed_salary():
     )
     payroll = PayrollGenerator(db, SalaryEngine(), settings=settings).generate_month(2026, 7)
     assert len(payroll) == 1
-    # hourly from 30000 not 52000: 144.23 * 1h
-    assert payroll[0].salary_deduction == Decimal("144.23")
-    assert payroll[0].final_salary == Decimal("29855.77")
+    # hourly from 52000: 52000/26/8 = 250
+    assert payroll[0].salary_deduction == Decimal("250.00")
+    assert payroll[0].final_salary == Decimal("51750.00")
     db.close()

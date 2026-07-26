@@ -137,8 +137,8 @@ class ReportService:
                     "employee_code": r.employee.employee_code if r.employee else "",
                     "employee_name": r.employee.name if r.employee else "",
                     "department": r.employee.department if r.employee else "",
-                    "check_in": r.check_in.isoformat() if r.check_in else "",
-                    "check_out": r.check_out.isoformat() if r.check_out else "",
+                    "check_in": r.check_in.isoformat() if r.check_in else "-",
+                    "check_out": r.check_out.isoformat() if r.check_out else "-",
                     "work_duration_hours": r.work_duration_hours,
                     "break_duration_hours": r.break_duration_hours,
                     "overtime_hours": r.overtime_hours,
@@ -202,7 +202,18 @@ class ReportService:
             if not rows:
                 raise ApplicationError("No attendance stats found for this range", code="no_data_found")
 
-            padded = [{**row, "reason": "-"} for row in rows]
+            padded = []
+            for row in rows:
+                padded.append({
+                    "employee_code": row.get("employee_code", ""),
+                    "employee_name": row.get("employee_name", ""),
+                    "present_days": row.get("present_days", 0),
+                    "absent_days": row.get("absent_days", 0),
+                    "total_worked_hours": row.get("total_worked_hours", 0),
+                    "average_daily_hours": row.get("average_daily_hours", 0),
+                    "attendance_percentage": row.get("attendance_percentage", 0),
+                    "reason": "-"
+                })
             return self._append_ignored_section(
                 padded,
                 [
@@ -252,46 +263,19 @@ class ReportService:
         keys = list(rows[0].keys()) if rows else []
         display_headers = [HEADER_MAPPING.get(k, k.replace("_", " ").title()) for k in keys]
         
-        if display_headers:
-            sheet.append(display_headers)
-            
+        formatted_rows = []
         for row in rows:
-            sheet.append(self._format_row_human(row, keys))
+            formatted_rows.append(self._format_row_human(row, keys))
             
-        # Professional styling
-        if rows:
-            from openpyxl.styles import Font, Alignment, PatternFill
-            header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-            header_fill = PatternFill(start_color="1F2937", end_color="1F2937", fill_type="solid")
-            body_font = Font(name="Calibri", size=11, color="000000")
-            body_fill = PatternFill(start_color="FFFFFF", end_color="FFFFFF", fill_type="solid")
-            
-            # Style header
-            for col_idx in range(1, len(keys) + 1):
-                cell = sheet.cell(row=1, column=col_idx)
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                
-            # Style body
-            for row_idx in range(2, len(rows) + 2):
-                for col_idx in range(1, len(keys) + 1):
-                    cell = sheet.cell(row=row_idx, column=col_idx)
-                    cell.font = body_font
-                    cell.fill = body_fill
-                
-            # Adjust column widths
-            for col in sheet.columns:
-                max_len = 0
-                col_letter = col[0].column_letter
-                for cell in col:
-                    val_str = str(cell.value or "")
-                    if len(val_str) > max_len:
-                        max_len = len(val_str)
-                sheet.column_dimensions[col_letter].width = max(max_len + 3, 10)
-                
-        workbook.save(path)
-        return path
+        from ..utils.excel import format_excel_report
+        return format_excel_report(
+            workbook=workbook,
+            sheet=sheet,
+            title=f"{filename_base.replace('_', ' ').title()}",
+            headers=display_headers,
+            rows=formatted_rows,
+            filename=path
+        )
 
     def _write_pdf(self, filename_base: str, rows: list[dict[str, Any]], *, title: str) -> Path:
         path = self._reports_dir / f"{filename_base}.pdf"
@@ -302,16 +286,16 @@ class ReportService:
         cell_style = ParagraphStyle(
             "cell_style",
             parent=styles["Normal"],
-            fontSize=8,
-            leading=10,
+            fontSize=10,
+            leading=12,
             textColor=colors.black
         )
         
         header_style = ParagraphStyle(
             "header_style",
             parent=styles["Normal"],
-            fontSize=9,
-            leading=11,
+            fontSize=11,
+            leading=14,
             textColor=colors.white,
             fontName="Helvetica-Bold"
         )
@@ -354,7 +338,15 @@ class ReportService:
         logger.debug(f"First data row: {rows[0] if rows else 'None'}")
         logger.debug(f"Table data length: {len(data)}")
             
-        table = Table(data, repeatRows=1)
+        # Proportional columns to expand across A4 landscape (842pt - 48pt margins = 794pt)
+        usable_width = 794
+        col_widths = [usable_width / len(keys)] * len(keys) if keys else None
+        
+        # Fine-tune if it's the exact 8-column stats layout
+        if len(keys) == 8:
+            col_widths = [80, 140, 75, 75, 95, 95, 85, 149]
+            
+        table = Table(data, colWidths=col_widths, repeatRows=1)
         table.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1f2937")),
             ("BACKGROUND", (0, 1), (-1, -1), colors.white),
@@ -362,10 +354,10 @@ class ReportService:
             ("ALIGN", (0, 0), (-1, -1), "LEFT"),
             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
             ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-            ("TOPPADDING", (0, 0), (-1, -1), 6),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ("LEFTPADDING", (0, 0), (-1, -1), 6),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 10),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
         ]))
         story.append(table)
         document.build(story)

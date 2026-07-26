@@ -17,14 +17,16 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<AppShell />}>
-            <Route index element={<DashboardPage />} />
-            <Route path="attendance" element={<AttendancePage />} />
-            <Route path="employees" element={<EmployeesPage />} />
-            <Route path="payroll" element={<PayrollPage />} />
-            <Route path="reports" element={<ReportsPage />} />
-            <Route path="notifications" element={<NotificationsPage />} />
-            <Route path="ai-insights" element={<AIInsightsPage />} />
-            <Route path="settings" element={<SettingsPage />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/attendance" element={<AttendancePage />} />
+            <Route path="/payroll" element={<PayrollPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
+            <Route path="/ai-insights" element={<AIInsightsPage />} />
+            <Route path="/employees" element={<EmployeesPage />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>

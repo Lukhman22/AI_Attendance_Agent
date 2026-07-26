@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
+
 import { Button } from './ui'
 import { clsx } from '../utils/format'
 
@@ -25,18 +26,12 @@ const mainNav = [
   { to: '/payroll', label: 'Payroll', icon: Wallet },
 ]
 
-const secondaryNav = [
-  { to: '/reports', label: 'Reports', icon: FileBarChart2 },
-  { to: '/notifications', label: 'Notifications', icon: Bell },
-  { to: '/ai-insights', label: 'AI Insights', icon: Sparkles },
-]
 
-const bottomNav = [
-  { to: '/settings', label: 'Settings', icon: Settings },
-]
 
 const pageTitles: Record<string, string> = {
   '/': 'Dashboard',
+  '/dashboard': 'Dashboard',
+  '/my-dashboard': 'My Dashboard',
   '/attendance': 'Attendance',
   '/employees': 'Employees',
   '/payroll': 'Payroll',
@@ -44,6 +39,7 @@ const pageTitles: Record<string, string> = {
   '/notifications': 'Notifications',
   '/ai-insights': 'AI Insights',
   '/settings': 'Settings',
+  '/users': 'User Management',
 }
 
 function NavSection({ label, items, onNavigate }: { label?: string; items: typeof mainNav; onNavigate: () => void }) {
@@ -84,11 +80,29 @@ function NavSection({ label, items, onNavigate }: { label?: string; items: typeo
 
 export function AppShell() {
   const { darkMode, toggleDarkMode } = useApp()
+
   const [open, setOpen] = useState(false)
   const location = useLocation()
   const currentTitle = pageTitles[location.pathname] || ''
 
   const closeMobile = () => setOpen(false)
+
+  const getMainNav = () => [
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/attendance', label: 'Attendance', icon: CalendarCheck2 },
+    { to: '/employees', label: 'Employees', icon: Users },
+    { to: '/payroll', label: 'Payroll', icon: Wallet },
+  ]
+
+  const getSecondaryNav = () => [
+    { to: '/reports', label: 'Reports', icon: FileBarChart2 },
+    { to: '/notifications', label: 'Notifications', icon: Bell },
+    { to: '/ai-insights', label: 'AI Insights', icon: Sparkles },
+  ]
+
+  const getBottomNav = () => [
+    { to: '/settings', label: 'Settings', icon: Settings },
+  ]
 
   return (
     <div className="min-h-screen bg-ink-50 dark:bg-ink-950">
@@ -120,10 +134,12 @@ export function AppShell() {
 
           {/* Navigation */}
           <nav className="flex flex-1 flex-col gap-6 overflow-y-auto px-3 py-4">
-            <NavSection items={mainNav} onNavigate={closeMobile} />
-            <NavSection label="Tools" items={secondaryNav} onNavigate={closeMobile} />
+            <NavSection items={getMainNav()} onNavigate={closeMobile} />
+            {getSecondaryNav().length > 0 && (
+              <NavSection label="Tools" items={getSecondaryNav()} onNavigate={closeMobile} />
+            )}
             <div className="mt-auto">
-              <NavSection items={bottomNav} onNavigate={closeMobile} />
+              <NavSection items={getBottomNav()} onNavigate={closeMobile} />
             </div>
           </nav>
         </aside>
@@ -149,10 +165,11 @@ export function AppShell() {
                 {currentTitle}
               </p>
             </div>
-            <Button variant="ghost" onClick={toggleDarkMode} aria-label="Toggle dark mode" className="gap-1.5 text-ink-500">
-              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              <span className="hidden text-xs sm:inline">{darkMode ? 'Light' : 'Dark'}</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" onClick={toggleDarkMode} aria-label="Toggle dark mode" className="gap-1.5 text-ink-500">
+                {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+            </div>
           </header>
 
           {/* Page Content */}
