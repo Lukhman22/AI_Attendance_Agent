@@ -25,9 +25,7 @@ hidden_imports += [
     'backend.app.models',
     'backend.app.main',
     'tkinter',
-    'pkg_resources',
-    'pkg_resources.extern',
-    'setuptools'
+    'pkg_resources'
 ]
 
 datas = []

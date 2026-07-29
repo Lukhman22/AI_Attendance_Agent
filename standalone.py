@@ -62,18 +62,31 @@ if len(sys.argv) > 1 and sys.argv[1] == "--splash":
     run_splash()
 
 if len(sys.argv) > 1 and sys.argv[1] == "--verify-imports":
-    try:
-        import numpy
-        import pandas
-        import sqlalchemy
-        import faster_whisper
-        import ctranslate2
-        import fitz
-        print("IMPORTS_OK")
-        sys.exit(0)
-    except Exception as e:
-        print(f"IMPORT_FAILED: {e}")
-        sys.exit(1)
+    modules = [
+        "numpy",
+        "pandas",
+        "sqlalchemy",
+        "fastapi",
+        "uvicorn",
+        "ctranslate2",
+        "onnxruntime",
+        "fitz",
+        "faster_whisper",
+        "backend.app.main"
+    ]
+    import traceback
+    for m in modules:
+        try:
+            print(f"Checking {m}...")
+            __import__(m)
+            print("OK")
+        except Exception as e:
+            print(f"FAILED MODULE: {m}")
+            print(f"Exception: {e}")
+            print(f"Traceback:\n{traceback.format_exc()}")
+            sys.exit(1)
+    print("IMPORTS_OK")
+    sys.exit(0)
 
 def get_free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
