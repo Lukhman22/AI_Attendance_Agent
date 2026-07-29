@@ -92,15 +92,40 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok", "environment": settings.environment}
 
-    @configured_app.post("/api/v1/system/shutdown", tags=["system"])
-    def shutdown() -> dict[str, str]:
-        import os, threading, time
-        logger.info("Shutdown requested via API.")
-        def do_shutdown():
-            time.sleep(0.5)
-            os._exit(0)
-        threading.Thread(target=do_shutdown, daemon=True).start()
-        return {"message": "Shutting down"}
+    from fastapi.responses import StreamingResponse
+    from fastapi import Request
+    import asyncio
+    import os
+
+    active_connections = 0
+
+    @configured_app.get("/api/v1/system/events", tags=["system"])
+    async def system_events(request: Request):
+        nonlocal active_connections
+        active_connections += 1
+        
+        async def event_generator():
+            nonlocal active_connections
+            try:
+                while True:
+                    if await request.is_disconnected():
+                        break
+                    yield "data: ping\n\n"
+                    await asyncio.sleep(2)
+            except asyncio.CancelledError:
+                pass
+            finally:
+                active_connections -= 1
+                if active_connections <= 0:
+                    async def delayed_shutdown():
+                        await asyncio.sleep(3)
+                        if active_connections <= 0:
+                            logger.info("All browser windows closed. Shutting down backend.")
+                            import signal
+                            os.kill(os.getpid(), signal.SIGTERM)
+                    asyncio.create_task(delayed_shutdown())
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
 
     # Serve React Frontend in Production
     from fastapi.responses import FileResponse

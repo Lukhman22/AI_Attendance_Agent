@@ -61,6 +61,16 @@ class PayrollGenerator:
             present_days += sum(1 for r in records if r.status == "missing_checkout")
 
             total_hours = sum((r.work_duration_hours or Decimal("0") for r in records), Decimal("0"))
+            
+            # STRICT SALARY VALIDATION DURING PAYROLL GENERATION
+            if getattr(employee, "monthly_salary", Decimal("0")) <= 0:
+                from ..core.exceptions import ApplicationError
+                raise ApplicationError(
+                    f"Cannot generate payroll: Employee {employee.employee_code} ({employee.name}) has no salary configured. "
+                    f"Please set their salary in the Employees module.",
+                    code="missing_salary",
+                )
+                
             emp_salary = resolve_salary(employee)
             
             breakdown = self._salary_engine.calculate_from_attendance(

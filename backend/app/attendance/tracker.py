@@ -50,7 +50,6 @@ class AttendanceTracker:
         skipped = 0
         ignored = 0
         employees_touched: set[str] = set()
-        salary_warnings: list[str] = []
         errors: list[str] = []
         ignored_records: list[dict] = []
         affected_dates: list[date] = []
@@ -82,14 +81,6 @@ class AttendanceTracker:
             employees_touched.add(employee.employee_code)
 
             emp_salary = resolve_salary(employee)
-            if emp_salary == Decimal("35000.00") and getattr(employee, "monthly_salary", Decimal("0")) <= 0:
-                warning = (
-                    f"Employee {employee.employee_code} has no monthly salary configured; "
-                    "using temporary demo salary (₹35,000) for daily calculations."
-                )
-                if warning not in salary_warnings:
-                    salary_warnings.append(warning)
-                    logger.warning(warning)
             
             daily_salary, hourly_salary = self._salary_engine.daily_and_hourly(
                 emp_salary,
@@ -139,8 +130,6 @@ class AttendanceTracker:
             skipped,
             ignored,
         )
-        if salary_warnings:
-            logger.info("Salary warnings: %s", len(salary_warnings))
 
         return {
             "imported": imported,
@@ -150,7 +139,6 @@ class AttendanceTracker:
             "errors": errors,
             "ignored_records": ignored_records,
             "employees_processed": len(employees_touched),
-            "salary_warnings": salary_warnings,
             "affected_dates": sorted(dates),
         }
 

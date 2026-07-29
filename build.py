@@ -45,10 +45,16 @@ def verify_imports(executable_path):
     print("\n--- Verifying Imports Inside Packaged App ---")
     cmd = f'"{executable_path}" --verify-imports'
     result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    if "IMPORTS_OK" in result.stdout:
+    
+    if result.returncode == 0 and "IMPORT_FAILED" not in result.stdout and "IMPORT_FAILED" not in result.stderr:
         print("All required dependencies successfully imported inside the bundle!")
+        if result.stderr.strip():
+            print(f"[Warning] STDERR during verification:\n{result.stderr.strip()}")
     else:
-        print(f"CRITICAL ERROR: Import verification failed!\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}")
+        print(f"CRITICAL ERROR: Import verification failed!")
+        print(f"Return Code: {result.returncode}")
+        print(f"STDOUT:\n{result.stdout}")
+        print(f"STDERR:\n{result.stderr}")
         sys.exit(1)
 
 def main():

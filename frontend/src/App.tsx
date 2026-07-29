@@ -11,7 +11,14 @@ import { NotificationsPage } from './pages/NotificationsPage'
 import { AIInsightsPage } from './pages/AIInsightsPage'
 import { SettingsPage } from './pages/SettingsPage'
 
+import { useEffect } from 'react'
+
 export default function App() {
+  useEffect(() => {
+    // Maintain a persistent connection. When this tab closes, the backend detects the drop and shuts down.
+    const evtSource = new EventSource('/api/v1/system/events')
+    return () => evtSource.close()
+  }, [])
   return (
     <AppProvider>
       <BrowserRouter>

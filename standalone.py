@@ -159,14 +159,39 @@ def main():
         else:
             print("[Startup] Frozen mode NOT detected (running from script)")
         
-        print("[Startup] sys.path updated")
+        print("[Startup] Sys.path updated")
         
+        lock_file = Path.home() / ".ai_attendance_agent" / "active_port.txt"
+        lock_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        if lock_file.exists():
+            try:
+                with open(lock_file, "r") as f:
+                    saved_port = int(f.read().strip())
+                
+                # Check if the server is actually alive
+                with httpx.Client(timeout=1.0) as client:
+                    resp = client.get(f"http://127.0.0.1:{saved_port}/health")
+                    if resp.status_code == 200:
+                        print(f"[Startup] App already running on port {saved_port}. Focusing browser.")
+                        import webbrowser
+                        webbrowser.open(f"http://127.0.0.1:{saved_port}")
+                        sys.exit(0)
+            except Exception:
+                # Stale lock file, ignore and overwrite
+                pass
+
         print("[Startup] Importing backend.app.main")
         import backend.app.main
         print("[Startup] Backend import successful")
         
         print("[Startup] Finding free port")
         port = get_free_port()
+        
+        # Save the active port
+        with open(lock_file, "w") as f:
+            f.write(str(port))
+
         
         print("[Startup] Starting health monitor")
         threading.Thread(target=wait_for_server, args=(port,), daemon=True).start()
