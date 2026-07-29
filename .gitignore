@@ -50,3 +50,7 @@ test_pydantic.py
 test_regression.py
 test_script.py
 wipe_data.py
+
+# PyInstaller build outputs
+dist/
+build/

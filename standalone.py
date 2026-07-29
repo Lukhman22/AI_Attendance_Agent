@@ -18,6 +18,14 @@ else:
 # Make sure backend is in the path
 sys.path.insert(0, os.path.join(base_path, 'backend'))
 
+# Redirect stdout and stderr to a log file if frozen
+if getattr(sys, 'frozen', False) and "--verify-imports" not in sys.argv:
+    log_dir = Path.home() / ".ai_attendance_agent" / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_file = open(log_dir / "app.log", "a", encoding="utf-8")
+    sys.stdout = log_file
+    sys.stderr = log_file
+
 def run_splash():
     try:
         import tkinter as tk
@@ -152,7 +160,7 @@ def main():
         
         print("[Startup] Launching Uvicorn")
         uvicorn.run(
-            "backend.app.main:app",
+            backend.app.main.app,
             host="127.0.0.1",
             port=port,
             log_level="error", # Suppress dev logs

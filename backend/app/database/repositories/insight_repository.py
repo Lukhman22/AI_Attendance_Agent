@@ -1,7 +1,6 @@
 from datetime import date
 
 from sqlalchemy import delete, select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from ...models import AiDailyInsight, AiMonthlyInsight, AiRecommendation, ExecutiveSummary, SmartAlert
@@ -15,32 +14,20 @@ class InsightRepository:
         return self._db.scalar(select(AiDailyInsight).where(AiDailyInsight.work_date == work_date))
 
     def upsert_daily(self, record: AiDailyInsight) -> AiDailyInsight:
-        stmt = (
-            pg_insert(AiDailyInsight)
-            .values(
-                work_date=record.work_date,
-                employees_present=record.employees_present,
-                employees_absent=record.employees_absent,
-                employees_below_min_hours=record.employees_below_min_hours,
-                employees_missing_checkout=record.employees_missing_checkout,
-                total_deductions=record.total_deductions,
-                payload=record.payload,
-            )
-            .on_conflict_do_update(
-                constraint="uq_ai_daily_insight_work_date",
-                set_=dict(
-                    employees_present=record.employees_present,
-                    employees_absent=record.employees_absent,
-                    employees_below_min_hours=record.employees_below_min_hours,
-                    employees_missing_checkout=record.employees_missing_checkout,
-                    total_deductions=record.total_deductions,
-                    payload=record.payload,
-                ),
-            )
-        )
-        self._db.execute(stmt)
+        existing = self.get_daily(record.work_date)
+        if existing is None:
+            self._db.add(record)
+            self._db.flush()
+            return record
+
+        existing.employees_present = record.employees_present
+        existing.employees_absent = record.employees_absent
+        existing.employees_below_min_hours = record.employees_below_min_hours
+        existing.employees_missing_checkout = record.employees_missing_checkout
+        existing.total_deductions = record.total_deductions
+        existing.payload = record.payload
         self._db.flush()
-        return self.get_daily(record.work_date)
+        return existing
 
     def get_monthly(self, year: int, month: int) -> AiMonthlyInsight | None:
         return self._db.scalar(

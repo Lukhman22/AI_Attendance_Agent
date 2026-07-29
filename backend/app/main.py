@@ -92,6 +92,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok", "environment": settings.environment}
 
+    @configured_app.post("/api/v1/system/shutdown", tags=["system"])
+    def shutdown() -> dict[str, str]:
+        import os, threading, time
+        logger.info("Shutdown requested via API.")
+        def do_shutdown():
+            time.sleep(0.5)
+            os._exit(0)
+        threading.Thread(target=do_shutdown, daemon=True).start()
+        return {"message": "Shutting down"}
+
     # Serve React Frontend in Production
     from fastapi.responses import FileResponse
     from fastapi import HTTPException

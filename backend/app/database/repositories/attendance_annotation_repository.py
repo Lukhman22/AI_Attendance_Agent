@@ -2,7 +2,6 @@ from datetime import date
 from typing import Sequence
 
 from sqlalchemy import delete, select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from ...models import AttendanceAnnotation
@@ -31,26 +30,22 @@ class AttendanceAnnotationRepository:
         return self._db.scalars(stmt).all()
 
     def upsert(self, employee_id: int, work_date: date, annotation_type: str, notes: str | None = None) -> AttendanceAnnotation:
-        stmt = (
-            pg_insert(AttendanceAnnotation)
-            .values(
+        existing = self.get_for_date(employee_id, work_date)
+        if existing is None:
+            record = AttendanceAnnotation(
                 employee_id=employee_id,
                 work_date=work_date,
                 annotation_type=annotation_type,
                 notes=notes,
             )
-            .on_conflict_do_update(
-                constraint="uq_attendance_annotation_employee_date",
-                set_=dict(
-                    annotation_type=annotation_type,
-                    notes=notes,
-                ),
-            )
-            .returning(AttendanceAnnotation)
-        )
-        result = self._db.execute(stmt)
+            self._db.add(record)
+            self._db.flush()
+            return record
+
+        existing.annotation_type = annotation_type
+        existing.notes = notes
         self._db.flush()
-        return result.scalar_one()
+        return existing
 
     def delete(self, annotation_id: int) -> bool:
         stmt = delete(AttendanceAnnotation).where(AttendanceAnnotation.id == annotation_id)

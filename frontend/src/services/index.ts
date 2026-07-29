@@ -22,9 +22,7 @@ export const attendanceApi = {
   upload: async (file: File) => {
     const form = new FormData()
     form.append('file', file)
-    const { data } = await api.post<AttendanceIngestResult>('/attendance/upload', form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await api.post<AttendanceIngestResult>('/attendance/upload', form)
     return data
   },
   dailySummary: async (workDate: string) => {
@@ -175,9 +173,7 @@ export const aiApi = {
   transcribe: async (audioBlob: Blob) => {
     const formData = new FormData()
     formData.append('audio', audioBlob)
-    const { data } = await api.post<{ text: string }>('/ai/transcribe', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    const { data } = await api.post<{ text: string }>('/ai/transcribe', formData)
     return data
   },
 }

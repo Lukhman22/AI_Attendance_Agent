@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Menu,
   Moon,
+  Power,
   Settings,
   Sparkles,
   Sun,
@@ -168,6 +169,22 @@ export function AppShell() {
             <div className="flex items-center gap-2">
               <Button variant="ghost" onClick={toggleDarkMode} aria-label="Toggle dark mode" className="gap-1.5 text-ink-500">
                 {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  fetch('/api/v1/system/shutdown', { method: 'POST' }).then(() => {
+                    window.close();
+                    document.body.innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;font-family:sans-serif;background-color:#f8fafc;color:#0f172a;"><h1>Server shut down safely. You may close this window.</h1></div>';
+                  }).catch(() => {
+                    window.close();
+                  });
+                }} 
+                aria-label="Shutdown server" 
+                className="gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                title="Shutdown Server"
+              >
+                <Power className="h-4 w-4" />
               </Button>
             </div>
           </header>
