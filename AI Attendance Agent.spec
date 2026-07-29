@@ -8,19 +8,7 @@ import platform
 block_cipher = None
 
 # Collect heavy libraries meticulously
-hidden_imports = []
-hidden_imports += collect_submodules('numpy')
-hidden_imports += collect_submodules('pandas')
-hidden_imports += collect_submodules('sqlalchemy')
-hidden_imports += collect_submodules('fastapi')
-hidden_imports += collect_submodules('pydantic')
-hidden_imports += collect_submodules('uvicorn')
-hidden_imports += collect_submodules('faster_whisper')
-hidden_imports += collect_submodules('ctranslate2')
-hidden_imports += collect_submodules('onnxruntime')
-hidden_imports += collect_submodules('requests')
-hidden_imports += collect_submodules('huggingface_hub')
-hidden_imports += [
+hidden_imports = [
     'fitz',
     'backend.app.models',
     'backend.app.main',
@@ -69,8 +57,10 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 print("=" * 60)
 print("Current Working Directory :", os.getcwd())
-print("Expected Icon Path        :", os.path.join("frontend", "public", "favicon.ico"))
-print("Icon Exists              :", os.path.exists(os.path.join("frontend", "public", "favicon.ico")))
+print("Expected Windows Icon     :", os.path.join("frontend", "public", "favicon.ico"))
+print("Windows Icon Exists       :", os.path.exists(os.path.join("frontend", "public", "favicon.ico")))
+print("Expected macOS Icon       :", os.path.join("assets", "icon.icns"))
+print("macOS Icon Exists         :", os.path.exists(os.path.join("assets", "icon.icns")))
 print("Frontend Exists          :", os.path.exists("frontend"))
 print("Public Exists            :", os.path.exists(os.path.join("frontend", "public")))
 print("=" * 60)
@@ -90,7 +80,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=os.path.join('frontend', 'public', 'favicon.ico') if platform.system() == 'Windows' else None
+    icon=os.path.join('frontend', 'public', 'favicon.ico') if platform.system() == 'Windows' else os.path.join('assets', 'icon.icns')
 )
 
 coll = COLLECT(
@@ -108,7 +98,7 @@ if platform.system() == 'Darwin':
     app = BUNDLE(
         coll,
         name='AI Attendance Agent.app',
-        icon=None,
+        icon=os.path.join('assets', 'icon.icns'),
         bundle_identifier='com.company.aiattendanceagent',
         info_plist={
             'NSHighResolutionCapable': 'True',

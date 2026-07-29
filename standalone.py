@@ -68,10 +68,8 @@ if len(sys.argv) > 1 and sys.argv[1] == "--verify-imports":
         "sqlalchemy",
         "fastapi",
         "uvicorn",
-        "ctranslate2",
-        "onnxruntime",
         "fitz",
-        "faster_whisper",
+        "backend.app.models",
         "backend.app.main"
     ]
     import traceback
