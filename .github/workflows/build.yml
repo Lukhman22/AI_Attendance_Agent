@@ -1,0 +1,87 @@
+name: Build AI Attendance Agent
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+      fail-fast: true
+
+    steps:
+      # 1. Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js (and 5. Cache npm packages)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # 3. Setup Python (and 4. Cache pip packages)
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      # 6. Install Python dependencies
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 7. Install frontend dependencies
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # 8. Build the React frontend
+      - name: Build the React frontend
+        working-directory: frontend
+        run: npm run build
+
+      # Ensure Inno Setup is installed on Windows (pre-installed on windows-latest, but required by prompt)
+      - name: Install Inno Setup
+        if: matrix.os == 'windows-latest'
+        run: choco install innosetup --no-progress
+
+      # 9. Execute the repository's existing build scripts
+      - name: Execute Windows build script
+        if: matrix.os == 'windows-latest'
+        run: package_windows.bat
+        shell: cmd
+
+      - name: Execute macOS build script
+        if: matrix.os == 'macos-latest'
+        run: |
+          chmod +x package_mac.sh
+          ./package_mac.sh
+
+      # Upload Artifacts
+      - name: Upload Windows Installer
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Attendance-Agent-Windows
+          path: dist/AI Attendance Agent Setup.exe
+          if-no-files-found: error
+
+      - name: Upload macOS DMG
+        if: matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Attendance-Agent-macOS
+          path: dist/AI Attendance Agent.dmg
+          if-no-files-found: error
