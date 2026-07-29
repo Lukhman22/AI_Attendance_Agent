@@ -77,7 +77,7 @@ def main():
 
     # 2. Package with PyInstaller using the SPEC file
     print("\n--- 2. Packaging Backend & Frontend ---")
-    run_command("pip install pyinstaller==6.9.0")
+    run_command("pip install --upgrade setuptools pyinstaller==6.9.0")
     
     # We strictly use the .spec file
     run_command("pyinstaller --noconfirm \"AI Attendance Agent.spec\"", cwd=root_dir)

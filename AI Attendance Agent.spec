@@ -20,7 +20,15 @@ hidden_imports += collect_submodules('ctranslate2')
 hidden_imports += collect_submodules('onnxruntime')
 hidden_imports += collect_submodules('requests')
 hidden_imports += collect_submodules('huggingface_hub')
-hidden_imports += ['fitz', 'backend.app.models', 'backend.app.main', 'tkinter']
+hidden_imports += [
+    'fitz',
+    'backend.app.models',
+    'backend.app.main',
+    'tkinter',
+    'pkg_resources',
+    'pkg_resources.extern',
+    'setuptools'
+]
 
 datas = []
 # Ensure frontend static files are bundled
