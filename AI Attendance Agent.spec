@@ -61,6 +61,14 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+print("=" * 60)
+print("Current Working Directory :", os.getcwd())
+print("Expected Icon Path        :", os.path.join("frontend", "public", "favicon.ico"))
+print("Icon Exists              :", os.path.exists(os.path.join("frontend", "public", "favicon.ico")))
+print("Frontend Exists          :", os.path.exists("frontend"))
+print("Public Exists            :", os.path.exists(os.path.join("frontend", "public")))
+print("=" * 60)
+
 exe = EXE(
     pyz,
     a.scripts,
