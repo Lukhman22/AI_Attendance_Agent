@@ -64,13 +64,13 @@ export function DataTable<T>({
           <thead>
             <tr className="border-b border-ink-100 dark:border-ink-800">
               {columns.map((col) => (
-                <th 
-                  key={col.key} 
-                  className={clsx(
-                    'sticky top-0 z-10 bg-ink-50/95 px-6 py-4 text-[11px] font-bold uppercase tracking-wider text-ink-500 backdrop-blur-md dark:bg-ink-900/95 dark:text-ink-400', 
-                    col.className
-                  )}
-                >
+                  <th 
+                    key={col.key} 
+                    className={clsx(
+                      'sticky top-0 z-10 bg-ink-50/95 px-8 py-5 text-xs font-bold uppercase tracking-wider text-ink-500 backdrop-blur-md dark:bg-ink-900/95 dark:text-ink-400', 
+                      col.className
+                    )}
+                  >
                   {col.sortable ? (
                     <button
                       className="group inline-flex items-center gap-1.5 hover:text-ink-900 transition-colors focus:outline-none dark:hover:text-ink-100"
@@ -106,7 +106,7 @@ export function DataTable<T>({
                 className="group bg-white transition-colors hover:bg-ink-50/80 dark:bg-ink-950 dark:hover:bg-ink-900/50"
               >
                 {columns.map((col) => (
-                  <td key={col.key} className={clsx('px-6 py-4 align-middle text-[14px] text-ink-700 dark:text-ink-200', col.className)}>
+                  <td key={col.key} className={clsx('px-8 py-5 align-middle text-base text-ink-700 dark:text-ink-200', col.className)}>
                     {col.render(row)}
                   </td>
                 ))}

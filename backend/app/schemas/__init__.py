@@ -17,8 +17,23 @@ class EmployeeCreate(BaseModel):
     employee_code: str
     name: str
     department: str | None = None
-    monthly_salary: Decimal = Decimal("0.00")
     working_days_per_month: int = 26
+
+class EmployeeSalaryBase(BaseModel):
+    employee_id: str
+    employee_name: str | None = None
+    monthly_salary: Decimal
+
+class EmployeeSalaryCreate(EmployeeSalaryBase):
+    pass
+
+class EmployeeSalaryUpdate(BaseModel):
+    monthly_salary: Decimal
+
+class EmployeeSalaryRead(EmployeeSalaryBase, ORMModel):
+    id: int
+    effective_from: date | None = None
+
 
 
 class EmployeeRead(ORMModel):
@@ -26,14 +41,8 @@ class EmployeeRead(ORMModel):
     employee_code: str
     name: str
     department: str | None
-    monthly_salary: Decimal
     working_days_per_month: int
     is_active: bool
-
-    @field_validator("monthly_salary", mode="before")
-    @classmethod
-    def resolve_salary(cls, v: Any) -> Decimal:
-        return resolve_salary_value(v)
 
 
 class AttendanceRecordRead(ORMModel):

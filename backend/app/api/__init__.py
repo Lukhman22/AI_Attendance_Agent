@@ -9,6 +9,7 @@ from .payroll import router as payroll_router
 from .reports import router as reports_router
 from .annotations import router as annotations_router
 from .settings import router as settings_router
+from .salaries import router as salaries_router
 
 api_router = APIRouter()
 api_router.include_router(settings_router)
@@ -20,3 +21,4 @@ api_router.include_router(reports_router)
 api_router.include_router(ai_router)
 api_router.include_router(alerts_router)
 api_router.include_router(annotations_router)
+api_router.include_router(salaries_router)

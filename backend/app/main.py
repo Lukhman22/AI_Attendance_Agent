@@ -90,7 +90,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @configured_app.get("/health", tags=["system"])
     def health() -> dict[str, str]:
-        return {"status": "ok", "environment": settings.environment}
+        import os
+        import sys
+        
+        executable = sys.executable
+        pid = os.getpid()
+        
+        # Determine database path
+        db_path = settings.sqlalchemy_database_uri
+        if db_path.startswith("sqlite:///"):
+            db_path = db_path.replace("sqlite:///", "")
+            
+        return {
+            "status": "ok", 
+            "environment": settings.environment,
+            "pid": str(pid),
+            "executable": executable,
+            "database": db_path,
+            "port": os.environ.get("__TAURI_BACKEND_PORT__", "unknown")
+        }
 
     from fastapi.responses import StreamingResponse
     from fastapi import Request

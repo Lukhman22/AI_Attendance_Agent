@@ -325,8 +325,9 @@ class HRAssistant:
                         
                 if intent == "why":
                     ans = f"Salary deduction explanation for {target_emp.name}:\n"
-                    from ..payroll.salary_resolver import resolve_salary
-                    emp_salary = resolve_salary(target_emp)
+                    emp_salary = payroll.final_salary + payroll.salary_deduction
+                    if emp_salary - payroll.salary_deduction != payroll.final_salary:
+                        raise ValueError("Internal validation failed: Salary calculation mismatch.")
                     ans += f"- Base Salary: {emp_salary}\n"
                     ans += f"- Absent Days: {payroll.absent_days}\n"
                     
@@ -344,7 +345,11 @@ class HRAssistant:
                     if settings.openai_api_key: ans = llm.generate_response(question, ans)
                     return build_response(ans, {"employee_id": target_emp.id, "payroll_month": f"{year}-{month:02d}"}, service="Payroll Service")
                         
-                ans = f"Payroll details for {target_emp.name} ({year}-{month:02d}):\n- Base Salary: {resolve_salary(target_emp)}\n- Deductions: {payroll.salary_deduction}\n- Final Salary: {payroll.final_salary}\n- Present: {payroll.present_days}\n- Absent: {payroll.absent_days}\n"
+                emp_salary = payroll.final_salary + payroll.salary_deduction
+                if emp_salary - payroll.salary_deduction != payroll.final_salary:
+                    raise ValueError("Internal validation failed: Salary calculation mismatch.")
+
+                ans = f"Payroll details for {target_emp.name} ({year}-{month:02d}):\n- Base Salary: {emp_salary}\n- Deductions: {payroll.salary_deduction}\n- Final Salary: {payroll.final_salary}\n- Present: {payroll.present_days}\n- Absent: {payroll.absent_days}\n"
                 if settings.openai_api_key: ans = llm.generate_response(question, ans)
                 return build_response(ans, {"employee_id": target_emp.id, "payroll_month": f"{year}-{month:02d}"}, service="Payroll Service")
 

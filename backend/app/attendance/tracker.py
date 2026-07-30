@@ -80,8 +80,10 @@ class AttendanceTracker:
             self._ignored.delete_for_employee_date(row.employee_code, row.work_date)
             employees_touched.add(employee.employee_code)
 
-            emp_salary = resolve_salary(employee)
-            
+            try:
+                emp_salary = resolve_salary(employee, self._db)
+            except ValueError:
+                emp_salary = Decimal("0.00")
             daily_salary, hourly_salary = self._salary_engine.daily_and_hourly(
                 emp_salary,
                 employee.working_days_per_month or 26,
@@ -191,17 +193,13 @@ class AttendanceTracker:
             # Refresh profile from report when present; keep salary unless directory fills a gap
             name = (row.employee_name or existing.name or code).strip()
             department = row.department if row.department is not None else existing.department
-            salary = existing.monthly_salary
             working_days = existing.working_days_per_month
-            if (salary is None or salary <= 0) and directory and directory.monthly_salary:
-                salary = directory.monthly_salary
             if (not working_days or working_days <= 0) and directory and directory.working_days_per_month:
                 working_days = directory.working_days_per_month
             employee = self._employees.upsert(
                 employee_code=code,
                 name=name,
                 department=department,
-                monthly_salary=salary,
                 working_days_per_month=working_days or 26,
             )
             return employee, None
@@ -212,30 +210,31 @@ class AttendanceTracker:
         # Register from attendance export identity + optional directory salary
         name = (row.employee_name or (directory.name if directory else None) or code).strip()
         department = row.department or (directory.department if directory else None)
-        salary = directory.monthly_salary if directory and directory.monthly_salary is not None else Decimal("0.00")
         working_days = (
             directory.working_days_per_month
             if directory and directory.working_days_per_month
             else (self._settings.default_working_days_per_month if self._settings else 26)
         )
         logger.info(
-            "Registering employee %s from attendance export (name=%s, dept=%s, salary_source=%s)",
+            "Registering employee %s from attendance export (name=%s, dept=%s)",
             code,
             name,
             department,
-            "directory" if directory and directory.monthly_salary else "pending",
         )
         employee = self._employees.upsert(
             employee_code=code,
             name=name,
             department=department,
-            monthly_salary=salary,
             working_days_per_month=working_days,
         )
         return employee, None
 
     def _salary_rates(self, employee: Employee) -> tuple[Decimal, Decimal]:
+        try:
+            emp_salary = resolve_salary(employee, self._db)
+        except ValueError:
+            emp_salary = Decimal("0.00")
         return self._salary_engine.daily_and_hourly(
-            employee.monthly_salary,
+            emp_salary,
             employee.working_days_per_month or 26,
         )

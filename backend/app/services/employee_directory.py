@@ -25,7 +25,6 @@ class DirectoryEmployee:
     employee_code: str
     name: str | None
     department: str | None
-    monthly_salary: Decimal | None
     working_days_per_month: int | None
 
 
@@ -58,15 +57,12 @@ class EmployeeDirectory:
                     continue
                 name = _pick(row, "Employee Name", "employee_name", "name", "Name")
                 department = _pick(row, "Department", "department", "dept")
-                salary_raw = _pick(row, "Monthly Salary", "monthly_salary", "salary")
                 days_raw = _pick(row, "Working Days Per Month", "working_days_per_month", "working_days")
-                salary = _to_decimal(salary_raw)
                 days = _to_int(days_raw)
                 entry = DirectoryEmployee(
                     employee_code=code.strip(),
                     name=name.strip() if name else None,
                     department=department.strip() if department else None,
-                    monthly_salary=salary,
                     working_days_per_month=days,
                 )
                 self._by_code[entry.employee_code.casefold()] = entry

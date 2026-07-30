@@ -38,8 +38,7 @@ class EmployeeRepository:
         *,
         employee_code: str,
         name: str,
-        department: str | None,
-        monthly_salary: Decimal | None = None,
+        department: str | None = None,
         working_days_per_month: int | None = None,
     ) -> Employee:
         employee = self.get_by_code(employee_code)
@@ -48,16 +47,15 @@ class EmployeeRepository:
                 employee_code=employee_code,
                 name=name,
                 department=department,
-                monthly_salary=monthly_salary if monthly_salary is not None else Decimal("0.00"),
                 working_days_per_month=working_days_per_month or 26,
             )
             self._db.add(employee)
         else:
             employee.name = name
-            employee.department = department
-            if monthly_salary is not None:
-                employee.monthly_salary = monthly_salary
+            if department is not None:
+                employee.department = department
             if working_days_per_month is not None:
                 employee.working_days_per_month = working_days_per_month
+
         self._db.flush()
         return employee

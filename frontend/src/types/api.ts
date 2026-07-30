@@ -3,7 +3,6 @@ export interface Employee {
   employee_code: string
   name: string
   department: string | null
-  monthly_salary: number | string
   working_days_per_month: number
   is_active: boolean
 }

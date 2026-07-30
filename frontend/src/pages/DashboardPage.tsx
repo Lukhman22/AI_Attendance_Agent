@@ -165,8 +165,8 @@ export function DashboardPage() {
 
       {/* Snapshot Section */}
       <section>
-        <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Today's Snapshot</h2>
-        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-5">
+        <h2 className="mb-6 text-sm font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Today's Snapshot</h2>
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
           <StatCard label="Total Employees" value={employees.length} accent="slate" />
           <StatCard label="Present Today" value={summary?.employees_present ?? 0} accent="brand" />
           <StatCard label="Absent Today" value={summary?.employees_absent ?? 0} accent="rose" />
@@ -185,12 +185,12 @@ export function DashboardPage() {
 
       {/* Attendance Overview */}
       <section>
-        <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Attendance Overview</h2>
-        <div className="grid gap-6 xl:grid-cols-2">
-          <Card className="flex flex-col p-6 xl:col-span-2">
-            <div className="mb-6">
-              <h3 className="font-display text-base font-semibold text-ink-900 dark:text-ink-50">Monthly Attendance Trend</h3>
-              <p className="mt-1 text-sm text-ink-500">Individual attendance percentages for the current month</p>
+        <h2 className="mb-6 text-sm font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Attendance Overview</h2>
+        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))' }}>
+          <Card className="flex flex-col p-8 md:col-span-2">
+            <div className="mb-8">
+              <h3 className="font-display text-2xl font-semibold text-ink-900 dark:text-ink-50">Monthly Attendance Trend</h3>
+              <p className="mt-2 text-base text-ink-500">Individual attendance percentages for the current month</p>
             </div>
             <div className="min-h-[320px] flex-1">
               {trendChart.length ? (
@@ -209,10 +209,10 @@ export function DashboardPage() {
             </div>
           </Card>
 
-          <Card className="flex flex-col p-6">
-            <div className="mb-6">
-              <h3 className="font-display text-base font-semibold text-ink-900 dark:text-ink-50">Department Distribution</h3>
-              <p className="mt-1 text-sm text-ink-500">Present vs absent days by department</p>
+          <Card className="flex flex-col p-8">
+            <div className="mb-8">
+              <h3 className="font-display text-2xl font-semibold text-ink-900 dark:text-ink-50">Department Distribution</h3>
+              <p className="mt-2 text-base text-ink-500">Present vs absent days by department</p>
             </div>
             <div className="min-h-[280px] flex-1">
               {departmentChart.length ? (
@@ -233,10 +233,10 @@ export function DashboardPage() {
             </div>
           </Card>
 
-          <Card className="flex flex-col p-6">
-            <div className="mb-6">
-              <h3 className="font-display text-base font-semibold text-ink-900 dark:text-ink-50">Average Working Hours</h3>
-              <p className="mt-1 text-sm text-ink-500">Daily averages based on backend calculations</p>
+          <Card className="flex flex-col p-8">
+            <div className="mb-8">
+              <h3 className="font-display text-2xl font-semibold text-ink-900 dark:text-ink-50">Average Working Hours</h3>
+              <p className="mt-2 text-base text-ink-500">Daily averages based on backend calculations</p>
             </div>
             <div className="min-h-[280px] flex-1">
               {hoursChart.length ? (
@@ -259,12 +259,12 @@ export function DashboardPage() {
 
       {/* Payroll Overview */}
       <section>
-        <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Payroll Overview</h2>
-        <div className="grid gap-6 xl:grid-cols-2">
-          <Card className="flex flex-col p-6">
-            <div className="mb-6">
-              <h3 className="font-display text-base font-semibold text-ink-900 dark:text-ink-50">Salary vs Deductions</h3>
-              <p className="mt-1 text-sm text-ink-500">Current month payroll distribution</p>
+        <h2 className="mb-6 text-sm font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Payroll Overview</h2>
+        <div className="grid gap-6" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))' }}>
+          <Card className="flex flex-col p-8">
+            <div className="mb-8">
+              <h3 className="font-display text-2xl font-semibold text-ink-900 dark:text-ink-50">Salary vs Deductions</h3>
+              <p className="mt-2 text-base text-ink-500">Current month payroll distribution</p>
             </div>
             <div className="min-h-[280px] flex-1">
               {payrollChart.length ? (
@@ -285,10 +285,10 @@ export function DashboardPage() {
             </div>
           </Card>
 
-          <Card className="flex flex-col p-6">
-            <div className="mb-6">
-              <h3 className="font-display text-base font-semibold text-ink-900 dark:text-ink-50">Today's Deductions</h3>
-              <p className="mt-1 text-sm text-ink-500">Breakdown of penalties applied today</p>
+          <Card className="flex flex-col p-8">
+            <div className="mb-8">
+              <h3 className="font-display text-2xl font-semibold text-ink-900 dark:text-ink-50">Today's Deductions</h3>
+              <p className="mt-2 text-base text-ink-500">Breakdown of penalties applied today</p>
             </div>
             <div className="min-h-[280px] flex-1">
               {deductionBreakdown.length ? (
@@ -313,21 +313,21 @@ export function DashboardPage() {
 
       {/* Employee Insights & Activity */}
       <section>
-        <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Employee Insights & Activity</h2>
+        <h2 className="mb-6 text-sm font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Employee Insights & Activity</h2>
         <Card className="p-0">
-          <div className="border-b border-ink-100 px-6 py-5 dark:border-ink-800">
-            <h3 className="font-display text-base font-semibold text-ink-900 dark:text-ink-50">Recent System Activity</h3>
-            <p className="mt-1 text-sm text-ink-500">Latest actions across the platform</p>
+          <div className="border-b border-ink-100 px-8 py-6 dark:border-ink-800">
+            <h3 className="font-display text-2xl font-semibold text-ink-900 dark:text-ink-50">Recent System Activity</h3>
+            <p className="mt-2 text-base text-ink-500">Latest actions across the platform</p>
           </div>
           <div className="flex flex-col divide-y divide-ink-100 dark:divide-ink-800/50">
             {activity.length ? (
               activity.slice(0, 5).map((item) => (
-                <div key={item.id} className="flex items-start justify-between gap-4 px-6 py-4 transition-colors hover:bg-ink-50/50 dark:hover:bg-ink-900/30">
+                <div key={item.id} className="flex items-start justify-between gap-4 px-8 py-6 transition-colors hover:bg-ink-50/50 dark:hover:bg-ink-900/30">
                   <div>
-                    <p className="text-sm font-medium text-ink-900 dark:text-ink-100">{item.title}</p>
-                    <p className="mt-1 text-sm text-ink-500 dark:text-ink-400">{item.detail}</p>
+                    <p className="text-lg font-medium text-ink-900 dark:text-ink-100">{item.title}</p>
+                    <p className="mt-1 text-base text-ink-500 dark:text-ink-400">{item.detail}</p>
                   </div>
-                  <span className="shrink-0 text-xs text-ink-400 dark:text-ink-500">{new Date(item.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                  <span className="shrink-0 text-sm text-ink-400 dark:text-ink-500">{new Date(item.at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                 </div>
               ))
             ) : (

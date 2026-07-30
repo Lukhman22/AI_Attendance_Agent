@@ -46,11 +46,38 @@ class PayrollGenerator:
         # Drop stale payroll (e.g. demo seed employees with no attendance this month)
         self._payroll.delete_for_period(year, month)
 
-        results: list[Payroll] = []
+        from sqlalchemy import select
+        from ..models import EmployeeSalary
+        from ..core.exceptions import ApplicationError
+
+        missing_salaries = []
+        emp_salary_map = {}
+
         for employee_id, records in sorted(by_employee.items()):
             employee = records[0].employee or self._employees.get_by_id(employee_id)
             if employee is None:
                 logger.warning("Skipping payroll for missing employee_id=%s", employee_id)
+                continue
+
+            stmt = select(EmployeeSalary).where(EmployeeSalary.employee_id == employee.employee_code)
+            salary_record = self._db.scalars(stmt).first()
+            
+            if not salary_record or salary_record.monthly_salary <= 0:
+                missing_salaries.append(f"{employee.employee_code} ({employee.name})")
+            else:
+                emp_salary_map[employee_id] = salary_record.monthly_salary
+
+        if missing_salaries:
+            raise ApplicationError(
+                "Cannot generate payroll. Some employees are missing salary configurations.",
+                code="missing_salary",
+                details=missing_salaries
+            )
+
+        results: list[Payroll] = []
+        for employee_id, records in sorted(by_employee.items()):
+            employee = records[0].employee or self._employees.get_by_id(employee_id)
+            if employee is None:
                 continue
 
             present_days = sum(1 for r in records if r.status == "present")
@@ -62,16 +89,7 @@ class PayrollGenerator:
 
             total_hours = sum((r.work_duration_hours or Decimal("0") for r in records), Decimal("0"))
             
-            # STRICT SALARY VALIDATION DURING PAYROLL GENERATION
-            if getattr(employee, "monthly_salary", Decimal("0")) <= 0:
-                from ..core.exceptions import ApplicationError
-                raise ApplicationError(
-                    f"Cannot generate payroll: Employee {employee.employee_code} ({employee.name}) has no salary configured. "
-                    f"Please set their salary in the Employees module.",
-                    code="missing_salary",
-                )
-                
-            emp_salary = resolve_salary(employee)
+            emp_salary = emp_salary_map[employee_id]
             
             breakdown = self._salary_engine.calculate_from_attendance(
                 records,
@@ -110,10 +128,6 @@ class PayrollGenerator:
     def list_month(self, year: int, month: int) -> list[Payroll]:
         return self._payroll.list_for_period(year, month)
 
-    def _default_monthly_salary(self) -> Decimal:
-        if self._settings is not None:
-            return Decimal(str(self._settings.default_monthly_salary))
-        return Decimal("30000")
 
     def _default_working_days(self) -> int:
         if self._settings is not None and self._settings.default_working_days_per_month > 0:

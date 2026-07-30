@@ -32,10 +32,10 @@ export function PageHeader({
   return (
     <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between animate-slide-down">
       <div>
-        <h1 className="font-display text-2xl font-semibold tracking-tight text-ink-900 dark:text-ink-50 sm:text-3xl">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink-900 dark:text-ink-50 sm:text-4xl">
           {title}
         </h1>
-        {subtitle ? <p className="mt-2 text-sm leading-relaxed text-ink-500 dark:text-ink-400">{subtitle}</p> : null}
+        {subtitle ? <p className="mt-2 text-base leading-relaxed text-ink-500 dark:text-ink-400">{subtitle}</p> : null}
       </div>
       {actions ? <div className="flex flex-wrap items-center gap-2.5">{actions}</div> : null}
     </div>
@@ -62,12 +62,12 @@ export function StatCard({
     green: 'from-emerald-500/10 to-transparent text-emerald-700 dark:from-emerald-500/12 dark:text-emerald-300',
   }
   return (
-    <Card className={clsx('overflow-hidden bg-gradient-to-br p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-elevated', accents[accent])}>
-      <p className="text-xs font-medium uppercase tracking-[0.08em] text-ink-500 dark:text-ink-400">
+    <Card className={clsx('overflow-hidden bg-gradient-to-br p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-elevated', accents[accent])}>
+      <p className="text-sm font-medium uppercase tracking-[0.08em] text-ink-500 dark:text-ink-400">
         {label}
       </p>
-      <p className="mt-3 font-display text-3xl font-semibold text-ink-900 dark:text-ink-50">{value}</p>
-      {hint ? <p className="mt-2 text-xs text-ink-500 dark:text-ink-400">{hint}</p> : null}
+      <p className="mt-4 font-display text-4xl font-semibold text-ink-900 dark:text-ink-50">{value}</p>
+      {hint ? <p className="mt-2 text-sm text-ink-500 dark:text-ink-400">{hint}</p> : null}
     </Card>
   )
 }
@@ -93,7 +93,7 @@ export function Button({
   return (
     <button
       className={clsx(
-        'inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50',
+        'inline-flex h-11 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-base font-medium transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50',
         styles[variant],
         className,
       )}
@@ -111,7 +111,7 @@ export const Input = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTML
         {...props}
         ref={ref}
         className={clsx(
-          'w-full rounded-xl border-0 px-4 py-2.5 text-[14px] text-ink-900 shadow-sm ring-1 ring-inset ring-ink-200 transition-all placeholder:text-ink-400 focus:ring-2 focus:ring-inset focus:ring-brand-500 outline-none dark:bg-ink-900/50 dark:text-ink-100 dark:ring-ink-800 dark:placeholder:text-ink-600 dark:focus:ring-brand-500 sm:leading-6',
+          'w-full h-12 rounded-xl border-0 px-4 py-3 text-base text-ink-900 shadow-sm ring-1 ring-inset ring-ink-200 transition-all placeholder:text-ink-400 focus:ring-2 focus:ring-inset focus:ring-brand-500 outline-none dark:bg-ink-900/50 dark:text-ink-100 dark:ring-ink-800 dark:placeholder:text-ink-600 dark:focus:ring-brand-500 sm:leading-6',
           props.className,
         )}
       />
@@ -127,7 +127,7 @@ export const Select = forwardRef<HTMLSelectElement, React.SelectHTMLAttributes<H
         {...props}
         ref={ref}
         className={clsx(
-          'w-full rounded-xl border-0 px-4 py-2.5 text-[14px] text-ink-900 shadow-sm ring-1 ring-inset ring-ink-200 transition-all focus:ring-2 focus:ring-inset focus:ring-brand-500 outline-none dark:bg-ink-900/50 dark:text-ink-100 dark:ring-ink-800 dark:focus:ring-brand-500 sm:leading-6',
+          'w-full h-12 rounded-xl border-0 px-4 py-3 text-base text-ink-900 shadow-sm ring-1 ring-inset ring-ink-200 transition-all focus:ring-2 focus:ring-inset focus:ring-brand-500 outline-none dark:bg-ink-900/50 dark:text-ink-100 dark:ring-ink-800 dark:focus:ring-brand-500 sm:leading-6',
           props.className,
         )}
       />
@@ -160,8 +160,8 @@ export function Badge({
 export function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-ink-200 bg-ink-50/50 px-6 py-16 text-center dark:border-ink-800 dark:bg-ink-900/20">
-      <p className="font-display text-base font-semibold text-ink-900 dark:text-ink-100">{title}</p>
-      <p className="mt-2 max-w-md text-sm text-ink-500 dark:text-ink-400">{description}</p>
+      <p className="font-display text-xl font-semibold text-ink-900 dark:text-ink-100">{title}</p>
+      <p className="mt-2 text-base text-ink-500 dark:text-ink-400">{description}</p>
     </div>
   )
 }

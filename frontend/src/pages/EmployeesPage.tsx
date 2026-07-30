@@ -21,7 +21,6 @@ interface EmployeeForm {
   employee_code: string
   name: string
   department: string
-  monthly_salary: number
   working_days_per_month: number
 }
 
@@ -36,7 +35,6 @@ export function EmployeesPage() {
   const { register, handleSubmit, reset } = useForm<EmployeeForm>({
     defaultValues: {
       working_days_per_month: 26,
-      monthly_salary: 0,
     },
   })
 
@@ -94,11 +92,10 @@ export function EmployeesPage() {
       await employeesApi.upsert({
         ...values,
         department: values.department || null,
-        monthly_salary: Number(values.monthly_salary),
         working_days_per_month: Number(values.working_days_per_month),
       })
       toast.success('Employee saved')
-      reset({ working_days_per_month: 26, monthly_salary: 0, employee_code: '', name: '', department: '' })
+      reset({ working_days_per_month: 26, employee_code: '', name: '', department: '' })
       await load()
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to save employee'))
@@ -155,13 +152,7 @@ export function EmployeesPage() {
               sortValue: (r) => r.department || '',
               render: (r) => r.department || '—',
             },
-            {
-              key: 'salary',
-              header: 'Monthly Salary',
-              sortable: true,
-              sortValue: (r) => Number(r.monthly_salary),
-              render: (r) => formatMoney(r.monthly_salary),
-            },
+
             {
               key: 'attn',
               header: 'Attendance %',
@@ -180,12 +171,7 @@ export function EmployeesPage() {
             <Input placeholder="Employee ID" {...register('employee_code', { required: true })} />
             <Input placeholder="Full name" {...register('name', { required: true })} />
             <Input placeholder="Department" {...register('department')} />
-            <Input
-              type="number"
-              step="0.01"
-              placeholder="Monthly salary"
-              {...register('monthly_salary', { required: true, valueAsNumber: true })}
-            />
+
             <Input
               type="number"
               placeholder="Working days / month"

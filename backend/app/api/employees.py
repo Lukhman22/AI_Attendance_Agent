@@ -26,7 +26,6 @@ def create_or_update_employee(
         employee_code=body.employee_code,
         name=body.name,
         department=body.department,
-        monthly_salary=body.monthly_salary,
         working_days_per_month=body.working_days_per_month,
     )
     db.commit()

@@ -13,6 +13,7 @@ import {
   Users,
   Wallet,
   X,
+  Activity,
 } from 'lucide-react'
 import { useState } from 'react'
 import { useApp } from '../context/AppContext'
@@ -25,6 +26,7 @@ const mainNav = [
   { to: '/attendance', label: 'Attendance', icon: CalendarCheck2 },
   { to: '/employees', label: 'Employees', icon: Users },
   { to: '/payroll', label: 'Payroll', icon: Wallet },
+  { to: '/payroll/salaries', label: 'Employee Salaries', icon: Wallet },
 ]
 
 
@@ -36,10 +38,13 @@ const pageTitles: Record<string, string> = {
   '/attendance': 'Attendance',
   '/employees': 'Employees',
   '/payroll': 'Payroll',
+  '/payroll/salaries': 'Employee Salaries',
+  '/payroll/salaries/import': 'Import Salaries',
   '/reports': 'Reports',
   '/notifications': 'Notifications',
   '/ai-insights': 'AI Insights',
   '/settings': 'Settings',
+  '/diagnostics': 'Diagnostics',
   '/users': 'User Management',
 }
 
@@ -93,6 +98,7 @@ export function AppShell() {
     { to: '/attendance', label: 'Attendance', icon: CalendarCheck2 },
     { to: '/employees', label: 'Employees', icon: Users },
     { to: '/payroll', label: 'Payroll', icon: Wallet },
+    { to: '/payroll/salaries', label: 'Employee Salaries', icon: Wallet },
   ]
 
   const getSecondaryNav = () => [
@@ -102,6 +108,7 @@ export function AppShell() {
   ]
 
   const getBottomNav = () => [
+    { to: '/diagnostics', label: 'Diagnostics', icon: Activity },
     { to: '/settings', label: 'Settings', icon: Settings },
   ]
 
@@ -111,12 +118,12 @@ export function AppShell() {
         {/* ── Sidebar ── */}
         <aside
           className={clsx(
-            'fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-ink-200/50 bg-white transition-transform duration-200 dark:border-ink-800/50 dark:bg-ink-900/95 lg:static lg:translate-x-0',
+            'fixed inset-y-0 left-0 z-40 flex w-[240px] flex-col border-r border-ink-200/50 bg-white transition-transform duration-200 dark:border-ink-800/50 dark:bg-ink-900/95 lg:static lg:translate-x-0',
             open ? 'translate-x-0' : '-translate-x-full',
           )}
         >
           {/* Sidebar Header */}
-          <div className="flex h-[57px] shrink-0 items-center justify-between border-b border-ink-100/80 px-5 dark:border-ink-800/40">
+          <div className="flex h-12 shrink-0 items-center justify-between border-b border-ink-100/80 px-5 dark:border-ink-800/40">
             <div className="flex items-center gap-2.5">
               <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600 text-[11px] font-bold text-white">
                 AI
@@ -157,7 +164,7 @@ export function AppShell() {
         {/* ── Main Area ── */}
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Top Header */}
-          <header className="sticky top-0 z-20 flex h-[57px] shrink-0 items-center justify-between border-b border-ink-200/50 bg-white/85 px-6 backdrop-blur-xl dark:border-ink-800/50 dark:bg-ink-950/85">
+          <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center justify-between border-b border-ink-200/50 bg-white/85 px-6 backdrop-blur-xl dark:border-ink-800/50 dark:bg-ink-950/85">
             <div className="flex items-center gap-3">
               <button className="rounded-lg p-1.5 hover:bg-ink-100 dark:hover:bg-ink-800 lg:hidden" onClick={() => setOpen(true)}>
                 <Menu className="h-5 w-5 text-ink-600 dark:text-ink-300" />
@@ -190,8 +197,8 @@ export function AppShell() {
           </header>
 
           {/* Page Content */}
-          <main className="flex-1 px-6 py-8 lg:px-10 lg:py-10">
-            <div key={location.pathname} className="mx-auto max-w-[1280px] animate-fade-in">
+          <main className="flex-1 px-6 py-8 lg:px-8 lg:py-8">
+            <div key={location.pathname} className="w-full animate-fade-in">
               <Outlet />
             </div>
           </main>

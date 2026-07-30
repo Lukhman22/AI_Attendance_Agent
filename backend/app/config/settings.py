@@ -120,12 +120,30 @@ class Settings(BaseModel):
     attendance_provider: Literal["file", "api"] = Field(
         default_factory=lambda: _env("ATTENDANCE_PROVIDER", "file").lower()  # type: ignore[arg-type]
     )
-    uploads_dir: str = Field(
-        default_factory=lambda: _env("UPLOADS_DIR", str(Path.home() / ".ai_attendance_agent" / "uploads"))
-    )
-    reports_dir: str = Field(
-        default_factory=lambda: _env("REPORTS_DIR", str(Path.home() / ".ai_attendance_agent" / "reports"))
-    )
+    @property
+    def app_data_dir(self) -> Path:
+        import platform
+        import os
+        system = platform.system()
+        if system == "Windows":
+            base = Path(os.getenv("APPDATA", Path.home() / "AppData" / "Roaming"))
+            return base / "AIAttendanceAgent"
+        elif system == "Darwin":
+            return Path.home() / "Library" / "Application Support" / "AIAttendanceAgent"
+        else:
+            return Path.home() / ".ai_attendance_agent"
+
+    @property
+    def uploads_dir(self) -> str:
+        d = _env("UPLOADS_DIR", str(self.app_data_dir / "uploads"))
+        Path(d).mkdir(parents=True, exist_ok=True)
+        return d
+
+    @property
+    def reports_dir(self) -> str:
+        d = _env("REPORTS_DIR", str(self.app_data_dir / "reports"))
+        Path(d).mkdir(parents=True, exist_ok=True)
+        return d
 
     # Notifications
     notification_provider: Literal["telegram", "none"] = Field(
@@ -174,8 +192,8 @@ class Settings(BaseModel):
         if self.database_url:
             return self.database_url
 
-        # Desktop standalone default: SQLite in user's home directory
-        app_dir = Path.home() / ".ai_attendance_agent"
+        # Desktop standalone default: SQLite in correct per-user app data directory
+        app_dir = self.app_data_dir
         app_dir.mkdir(parents=True, exist_ok=True)
         db_path = app_dir / "database.sqlite3"
         return f"sqlite:///{db_path}"

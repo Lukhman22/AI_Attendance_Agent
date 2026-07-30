@@ -36,6 +36,13 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
+      # Setup Rust for Tauri
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: x86_64-pc-windows-msvc, aarch64-apple-darwin, x86_64-apple-darwin
+
       # 6. Install Python dependencies
       - name: Install Python dependencies
         run: |

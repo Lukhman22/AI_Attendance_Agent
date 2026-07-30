@@ -74,7 +74,6 @@ export const employeesApi = {
     employee_code: string
     name: string
     department?: string | null
-    monthly_salary: number
     working_days_per_month: number
   }) => {
     const { data } = await api.post<Employee>('/employees', payload)
@@ -181,6 +180,52 @@ export const aiApi = {
 export const systemApi = {
   health: async () => {
     const { data } = await axios.get<{ status: string; environment: string }>('/health')
+    return data
+  },
+}
+
+export interface EmployeeSalary {
+  id: number
+  employee_id: string
+  employee_name: string | null
+  monthly_salary: number
+  effective_from: string | null
+}
+
+export const salariesApi = {
+  list: async () => {
+    const { data } = await api.get<EmployeeSalary[]>('/salaries')
+    return data
+  },
+  create: async (payload: { employee_id: string; employee_name: string; monthly_salary: number }) => {
+    const { data } = await api.post<EmployeeSalary>('/salaries', payload)
+    return data
+  },
+  update: async (id: number, payload: { monthly_salary: number }) => {
+    const { data } = await api.put<EmployeeSalary>(`/salaries/${id}`, payload)
+    return data
+  },
+  bulkUpdate: async (payload: { id: number, employee_id: string, employee_name: string, monthly_salary: number }[]) => {
+    const { data } = await api.put<{ message: string }>('/salaries/bulk', payload)
+    return data
+  },
+  delete: async (id: number) => {
+    const { data } = await api.delete<{ message: string }>(`/salaries/${id}`)
+    return data
+  },
+  previewImport: async (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const { data } = await api.post<{
+      new_employees: any[]
+      existing_to_update: any[]
+      invalid_rows: any[]
+      duplicates: any[]
+    }>('/salaries/import/preview', form)
+    return data
+  },
+  confirmImport: async (payload: any) => {
+    const { data } = await api.post<{ message: string }>('/salaries/import/confirm', payload)
     return data
   },
 }

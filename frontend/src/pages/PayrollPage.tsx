@@ -8,6 +8,40 @@ import { DataTable } from '../components/DataTable'
 import { Button, Input, PageHeader, Skeleton } from '../components/ui'
 import { useApp } from '../context/AppContext'
 import { formatMoney, formatNumber, monthBounds } from '../utils/format'
+import { Link } from 'react-router-dom'
+import { X, AlertCircle } from 'lucide-react'
+
+function MissingSalariesModal({ missing, onClose }: { missing: string[], onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl dark:bg-ink-900">
+        <div className="mb-4 flex items-center justify-between border-b border-ink-100 pb-4 dark:border-ink-800">
+          <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+            <AlertCircle className="h-5 w-5" />
+            <h3 className="text-lg font-semibold">Salaries Not Configured</h3>
+          </div>
+          <button onClick={onClose} className="text-ink-500 hover:text-ink-700 dark:hover:text-ink-300">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-ink-600 dark:text-ink-300 mb-4">
+          Cannot generate payroll because the following employees do not have a monthly salary configured:
+        </p>
+        <ul className="max-h-60 overflow-y-auto space-y-2 mb-6 border border-ink-200 dark:border-ink-800 rounded-lg p-3 bg-ink-50 dark:bg-ink-950 text-sm">
+          {missing.map((emp, i) => (
+            <li key={i} className="text-ink-800 dark:text-ink-200 font-medium">{emp}</li>
+          ))}
+        </ul>
+        <div className="flex justify-end gap-3 mt-6">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Link to="/payroll/salaries">
+            <Button>Go to Employee Salaries</Button>
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export function PayrollPage() {
   const { pushActivity } = useApp()
@@ -17,6 +51,7 @@ export function PayrollPage() {
   const [rows, setRows] = useState<PayrollRecord[]>([])
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [missingSalaries, setMissingSalaries] = useState<string[]>([])
 
   async function load() {
     setLoading(true)
@@ -46,8 +81,12 @@ export function PayrollPage() {
         title: 'Payroll generated',
         detail: `${month}/${year} · ${data.length} employees`,
       })
-    } catch (error) {
-      toast.error(getErrorMessage(error, 'Payroll generation failed'))
+    } catch (error: any) {
+      if (error?.response?.data?.error?.code === 'missing_salary') {
+        setMissingSalaries(error.response.data.error.details || [])
+      } else {
+        toast.error(getErrorMessage(error, 'Payroll generation failed'))
+      }
     } finally {
       setBusy(false)
     }
@@ -79,6 +118,9 @@ export function PayrollPage() {
 
   return (
     <div>
+      {missingSalaries.length > 0 && (
+        <MissingSalariesModal missing={missingSalaries} onClose={() => setMissingSalaries([])} />
+      )}
       <PageHeader
         title="Payroll"
         subtitle="Generate payroll from uploaded attendance for the selected month. All employees use the configured flat monthly salary."
