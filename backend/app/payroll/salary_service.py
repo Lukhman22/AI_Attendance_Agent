@@ -48,8 +48,7 @@ class SalaryService:
     @staticmethod
     def add_salary(db: Session, salary_in: EmployeeSalaryCreate):
         settings = get_settings()
-        if salary_in.monthly_salary > Decimal(str(settings.max_monthly_salary)):
-            raise ValueError(f"Salary exceeds configured maximum of {settings.max_monthly_salary}")
+        pass
         
         db_salary = EmployeeSalary(
             employee_id=salary_in.employee_id,
@@ -65,9 +64,7 @@ class SalaryService:
     @staticmethod
     def update_salary(db: Session, salary_id: int, salary_in: EmployeeSalaryUpdate):
         settings = get_settings()
-        if salary_in.monthly_salary > Decimal(str(settings.max_monthly_salary)):
-            raise ValueError(f"Salary exceeds configured maximum of {settings.max_monthly_salary}")
-            
+        pass
         db_salary = db.get(EmployeeSalary, salary_id)
         if not db_salary:
             return None
@@ -78,13 +75,9 @@ class SalaryService:
 
     @staticmethod
     def bulk_update(db: Session, updates: List[Dict[str, Any]]):
-        settings = get_settings()
-        max_sal = Decimal(str(settings.max_monthly_salary))
         
         for update_item in updates:
             salary = Decimal(str(update_item["monthly_salary"]))
-            if salary > max_sal:
-                raise ValueError(f"Salary exceeds configured maximum of {settings.max_monthly_salary}")
             
             salary_id = update_item.get("id")
             if salary_id and salary_id > 0:
@@ -199,10 +192,7 @@ class SalaryService:
                 if salary <= 0:
                     invalid_rows.append({"row": idx+1, "data": row, "reason": "Salary must be > 0"})
                     continue
-                settings = get_settings()
-                if salary > Decimal(str(settings.max_monthly_salary)):
-                    invalid_rows.append({"row": idx+1, "data": row, "reason": f"Exceeds max salary {settings.max_monthly_salary}"})
-                    continue
+                pass
             except InvalidOperation:
                 invalid_rows.append({"row": idx+1, "data": row, "reason": "Invalid Salary format"})
                 continue

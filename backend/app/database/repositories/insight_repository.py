@@ -2,6 +2,7 @@ from datetime import date
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.sqlite import insert
 
 from ...models import AiDailyInsight, AiMonthlyInsight, AiRecommendation, ExecutiveSummary, SmartAlert
 
@@ -14,20 +15,29 @@ class InsightRepository:
         return self._db.scalar(select(AiDailyInsight).where(AiDailyInsight.work_date == work_date))
 
     def upsert_daily(self, record: AiDailyInsight) -> AiDailyInsight:
-        existing = self.get_daily(record.work_date)
-        if existing is None:
-            self._db.add(record)
-            self._db.flush()
-            return record
-
-        existing.employees_present = record.employees_present
-        existing.employees_absent = record.employees_absent
-        existing.employees_below_min_hours = record.employees_below_min_hours
-        existing.employees_missing_checkout = record.employees_missing_checkout
-        existing.total_deductions = record.total_deductions
-        existing.payload = record.payload
+        stmt = insert(AiDailyInsight).values(
+            work_date=record.work_date,
+            employees_present=record.employees_present,
+            employees_absent=record.employees_absent,
+            employees_below_min_hours=record.employees_below_min_hours,
+            employees_missing_checkout=record.employees_missing_checkout,
+            total_deductions=record.total_deductions,
+            payload=record.payload
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=['work_date'],
+            set_={
+                'employees_present': stmt.excluded.employees_present,
+                'employees_absent': stmt.excluded.employees_absent,
+                'employees_below_min_hours': stmt.excluded.employees_below_min_hours,
+                'employees_missing_checkout': stmt.excluded.employees_missing_checkout,
+                'total_deductions': stmt.excluded.total_deductions,
+                'payload': stmt.excluded.payload,
+            }
+        )
+        self._db.execute(stmt)
         self._db.flush()
-        return existing
+        return self.get_daily(record.work_date)
 
     def get_monthly(self, year: int, month: int) -> AiMonthlyInsight | None:
         return self._db.scalar(
@@ -35,34 +45,48 @@ class InsightRepository:
         )
 
     def upsert_monthly(self, record: AiMonthlyInsight) -> AiMonthlyInsight:
-        existing = self.get_monthly(record.year, record.month)
-        if existing is None:
-            self._db.add(record)
-            self._db.flush()
-            return record
-
-        existing.company_attendance_percentage = record.company_attendance_percentage
-        existing.average_daily_hours = record.average_daily_hours
-        existing.total_salary_deductions = record.total_salary_deductions
-        existing.payload = record.payload
+        stmt = insert(AiMonthlyInsight).values(
+            year=record.year,
+            month=record.month,
+            company_attendance_percentage=record.company_attendance_percentage,
+            average_daily_hours=record.average_daily_hours,
+            total_salary_deductions=record.total_salary_deductions,
+            payload=record.payload
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=['year', 'month'],
+            set_={
+                'company_attendance_percentage': stmt.excluded.company_attendance_percentage,
+                'average_daily_hours': stmt.excluded.average_daily_hours,
+                'total_salary_deductions': stmt.excluded.total_salary_deductions,
+                'payload': stmt.excluded.payload,
+            }
+        )
+        self._db.execute(stmt)
         self._db.flush()
-        return existing
+        return self.get_monthly(record.year, record.month)
 
     def get_executive_summary(self, work_date: date) -> ExecutiveSummary | None:
         return self._db.scalar(select(ExecutiveSummary).where(ExecutiveSummary.work_date == work_date))
 
     def upsert_executive_summary(self, record: ExecutiveSummary) -> ExecutiveSummary:
-        existing = self.get_executive_summary(record.work_date)
-        if existing is None:
-            self._db.add(record)
-            self._db.flush()
-            return record
-
-        existing.summary_text = record.summary_text
-        existing.estimated_deductions = record.estimated_deductions
-        existing.payload = record.payload
+        stmt = insert(ExecutiveSummary).values(
+            work_date=record.work_date,
+            summary_text=record.summary_text,
+            estimated_deductions=record.estimated_deductions,
+            payload=record.payload
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=['work_date'],
+            set_={
+                'summary_text': stmt.excluded.summary_text,
+                'estimated_deductions': stmt.excluded.estimated_deductions,
+                'payload': stmt.excluded.payload,
+            }
+        )
+        self._db.execute(stmt)
         self._db.flush()
-        return existing
+        return self.get_executive_summary(record.work_date)
 
     def replace_alerts_for_date(self, work_date: date, alerts: list[SmartAlert]) -> list[SmartAlert]:
         self._db.execute(delete(SmartAlert).where(SmartAlert.work_date == work_date))

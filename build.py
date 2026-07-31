@@ -71,9 +71,41 @@ def main():
 
     # 1. Package Backend with PyInstaller
     print("\n--- 1. Packaging Backend ---")
-    run_command('pip install --upgrade "setuptools<70.0.0" pyinstaller==6.9.0')
-    run_command("pyinstaller --noconfirm backend.spec", cwd=root_dir)
+    run_command(f'{sys.executable} -m pip install -r requirements.txt')
+    run_command(f'{sys.executable} -m pip install --upgrade "setuptools<70.0.0" pyinstaller==6.9.0')
+    run_command(f'{sys.executable} -m PyInstaller --noconfirm backend.spec', cwd=root_dir)
     
+    # 1.5 Verify PyInstaller Output
+    print("\n--- Verifying PyInstaller Output ---")
+    dist_backend = root_dir / "dist" / "backend"
+    print(f"Expected PyInstaller output path: {dist_backend.absolute()}")
+    
+    if not dist_backend.exists():
+        print(f"CRITICAL ERROR: dist/backend does not exist!")
+        print(f"Actual contents of dist directory:")
+        if (root_dir / "dist").exists():
+            for item in (root_dir / "dist").iterdir():
+                print(f"  - {item}")
+        else:
+            print("  dist/ directory itself does not exist!")
+        sys.exit(1)
+        
+    print(f"dist/backend exists. Verifying contents...")
+    exe_name = "backend.exe" if platform.system() == "Windows" else "backend"
+    if not (dist_backend / exe_name).exists():
+        print(f"CRITICAL ERROR: {exe_name} not found in dist/backend!")
+        for item in dist_backend.iterdir():
+            print(f"  - {item}")
+        sys.exit(1)
+        
+    if platform.system() == "Windows" and not (dist_backend / "_internal").exists():
+        print(f"CRITICAL ERROR: _internal directory not found in dist/backend!")
+        for item in dist_backend.iterdir():
+            print(f"  - {item}")
+        sys.exit(1)
+        
+    print("PyInstaller output verified successfully.")
+
     # 2. Build Tauri App
     print("\n--- 2. Building Desktop App (Tauri) ---")
     if not (frontend_dir / "node_modules").exists():
@@ -93,7 +125,7 @@ def main():
             
         print(f"Build complete! Original App located at: {app_path}")
         
-        # 4. Isolated macOS Signing
+        # 4. Isolated macOS Deep Signing
         print("\n--- 4. Isolated macOS Deep Signing ---")
         tmp_dir = Path("/tmp/ai_attendance_packaging")
         if tmp_dir.exists():
@@ -109,25 +141,67 @@ def main():
         run_command(f'xattr -cr "{target_app}"', exit_on_error=False)
         
         sign_id = os.environ.get("APPLE_SIGNING_IDENTITY", "-")
-        
-        # 4.1 Sign all dynamic libraries and shared objects
-        run_command(f'find "{target_app}" -type f \\( -name "*.dylib" -o -name "*.so" \\) -exec codesign --force --sign "{sign_id}" --options runtime {{}} \\;')
-        
-        # 4.2 Sign embedded Python runtime inside PyInstaller _internal
-        run_command(f'find "{target_app}/Contents/Resources/backend/_internal" -type f -name "Python*" -exec codesign --force --sign "{sign_id}" --options runtime {{}} \\;', exit_on_error=False)
-        run_command(f'find "{target_app}/Contents/Resources/backend/_internal" -type f -name "base_library.zip" -exec codesign --force --sign "{sign_id}" --options runtime {{}} \\;', exit_on_error=False)
+        is_adhoc = (sign_id == "-")
 
-        # 4.3 Sign the backend executable sidecar
-        run_command(f'codesign --force --sign "{sign_id}" --options runtime "{target_app}/Contents/Resources/backend/backend"')
+        # Prepare entitlements file for Production
+        entitlements_path = root_dir / "entitlements.plist"
+        if not is_adhoc:
+            entitlements_content = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>"""
+            with open(entitlements_path, "w") as f:
+                f.write(entitlements_content)
         
-        # 4.4 Sign Tauri Frameworks and main MacOS binary
-        run_command(f'find "{target_app}/Contents/Frameworks" -type f -exec codesign --force --sign "{sign_id}" --options runtime {{}} \\;', exit_on_error=False)
-        run_command(f'find "{target_app}/Contents/MacOS" -type f -exec codesign --force --sign "{sign_id}" --options runtime {{}} \\;')
+        # Helper to sign a specific file
+        def sign_file(filepath):
+            if is_adhoc:
+                cmd = f'codesign --force --sign "{sign_id}" "{filepath}"'
+            else:
+                cmd = f'codesign --force --sign "{sign_id}" --options runtime --entitlements "{entitlements_path}" "{filepath}"'
+            subprocess.run(cmd, shell=True, capture_output=True)
+
+        # 4.1 Unsign and resign all Mach-O binaries from inside out
+        print("Finding and signing all Mach-O binaries from the inside out...")
+        # First pass: sign everything in the app except the main executables and outer bundle
+        for root_path, _, files in os.walk(target_app, topdown=False):
+            for f in files:
+                filepath = os.path.join(root_path, f)
+                # Skip the main Tauri executable and backend executable for now, we'll do them last
+                if filepath.endswith("MacOS/app") or filepath.endswith("backend/backend"):
+                    continue
+                    
+                # Check if file is a Mach-O binary
+                file_check = subprocess.run(f'file "{filepath}"', shell=True, capture_output=True, text=True)
+                if "Mach-O" in file_check.stdout:
+                    # Remove existing conflicting signature
+                    subprocess.run(f'codesign --remove-signature "{filepath}"', shell=True, capture_output=True)
+                    # Resign
+                    sign_file(filepath)
+                    
+        # 4.2 Sign the main executables
+        backend_exe = target_app / "Contents" / "Resources" / "backend" / "backend"
+        if backend_exe.exists():
+            subprocess.run(f'codesign --remove-signature "{backend_exe}"', shell=True, capture_output=True)
+            sign_file(backend_exe)
+            
+        tauri_exe = target_app / "Contents" / "MacOS" / "app"
+        if tauri_exe.exists():
+            subprocess.run(f'codesign --remove-signature "{tauri_exe}"', shell=True, capture_output=True)
+            sign_file(tauri_exe)
+            
+        # 4.3 Sign the outer bundle
+        subprocess.run(f'codesign --remove-signature "{target_app}"', shell=True, capture_output=True)
+        if is_adhoc:
+            run_command(f'codesign --force --sign "{sign_id}" --strict "{target_app}"')
+        else:
+            run_command(f'codesign --force --sign "{sign_id}" --strict --options runtime --entitlements "{entitlements_path}" "{target_app}"')
         
-        # 4.5 Sign the outer .app bundle WITHOUT --deep
-        run_command(f'codesign --force --sign "{sign_id}" --strict --options runtime "{target_app}"')
-        
-        # 4.6 Verify the signatures
+        # 4.4 Verify the signatures
         run_command(f'codesign --verify --deep --strict --verbose=4 "{target_app}"')
         
         # Note: spctl --assess only passes if signed with a real Developer ID, so we don't fail the build on it if using ad-hoc (-)
@@ -135,12 +209,15 @@ def main():
             run_command(f'spctl --assess --type execute --verbose "{target_app}"')
         
         # Package into DMG using hdiutil directly
-        print("\n--- 5. Creating Distributable DMG ---")
-        final_dmg = root_dir / "dist" / "AI Attendance Agent.dmg"
+        print("\n--- 5. Creating DMG ---")
+        dist_dir = root_dir / "dist"
+        dist_dir.mkdir(parents=True, exist_ok=True)
+        final_dmg = dist_dir / "AI Attendance Agent.dmg"
         if final_dmg.exists():
             final_dmg.unlink()
-        
         run_command(f'hdiutil create -volname "AI Attendance Agent" -srcfolder "{tmp_dir}" -ov -format UDZO "{final_dmg}"')
+        
+        print("\nArtifacts perfectly signed and ready in /tmp/ai_attendance_packaging/")
         
         # Notarization (if credentials provided)
         apple_id = os.environ.get("APPLE_ID")

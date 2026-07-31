@@ -35,13 +35,13 @@ export const attendanceApi = {
     const { data } = await api.get<AttendanceRecord[]>('/attendance/records', {
       params: { work_date: workDate },
     })
-    return data
+    return Array.isArray(data) ? data : []
   },
   stats: async (startDate: string, endDate: string) => {
     const { data } = await api.get<AttendanceStats[]>('/attendance/stats', {
       params: { start_date: startDate, end_date: endDate },
     })
-    return data
+    return Array.isArray(data) ? data : []
   },
 }
 
@@ -50,7 +50,7 @@ export const annotationsApi = {
     const { data } = await api.get<AttendanceAnnotation[]>('/annotations', {
       params: { work_date: workDate, start_date: startDate, end_date: endDate },
     })
-    return data
+    return Array.isArray(data) ? data : []
   },
   upsert: async (employeeId: number, workDate: string, annotationType: string, notes?: string) => {
     const { data } = await api.put<AttendanceAnnotation>(`/annotations/${employeeId}/${workDate}`, {
@@ -68,7 +68,7 @@ export const annotationsApi = {
 export const employeesApi = {
   list: async () => {
     const { data } = await api.get<Employee[]>('/employees')
-    return data
+    return Array.isArray(data) ? data : []
   },
   upsert: async (payload: {
     employee_code: string
@@ -88,11 +88,11 @@ export const employeesApi = {
 export const payrollApi = {
   generate: async (year: number, month: number) => {
     const { data } = await api.post<PayrollRecord[]>('/payroll/generate', { year, month })
-    return data
+    return Array.isArray(data) ? data : []
   },
   list: async (year: number, month: number) => {
     const { data } = await api.get<PayrollRecord[]>(`/payroll/${year}/${month}`)
-    return data
+    return Array.isArray(data) ? data : []
   },
 }
 
@@ -118,7 +118,7 @@ export const notificationsApi = {
     const { data } = await api.get<NotificationLog[]>('/notifications/logs', {
       params: { limit },
     })
-    return data
+    return Array.isArray(data) ? data : []
   },
   getSettings: async () => {
     const { data } = await api.get<NotificationSettings>('/notifications/settings')
@@ -163,7 +163,7 @@ export const aiApi = {
   },
   alerts: async (params: { work_date?: string; year?: number; month?: number }) => {
     const { data } = await api.get<SmartAlert[]>('/alerts', { params })
-    return data
+    return Array.isArray(data) ? data : []
   },
   ask: async (question: string, context?: { work_date?: string; year?: number; month?: number, employee_id?: number, compare_employee_id?: number, intent?: string, granularity?: string }) => {
     const { data } = await api.post<{ question: string; answer: string; references: Record<string, any>, context?: any }>('/ai/ask', { question, context })
@@ -195,7 +195,7 @@ export interface EmployeeSalary {
 export const salariesApi = {
   list: async () => {
     const { data } = await api.get<EmployeeSalary[]>('/salaries')
-    return data
+    return Array.isArray(data) ? data : []
   },
   create: async (payload: { employee_id: string; employee_name: string; monthly_salary: number }) => {
     const { data } = await api.post<EmployeeSalary>('/salaries', payload)

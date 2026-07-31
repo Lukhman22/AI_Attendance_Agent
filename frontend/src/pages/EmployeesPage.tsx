@@ -81,7 +81,7 @@ export function EmployeesPage() {
   }, [employees, search, statsMap])
 
   const employeePayroll = useMemo(
-    () => payroll.filter((p) => selected && p.employee_id === selected.id),
+    () => (payroll || []).filter((p) => selected && p.employee_id === selected.id),
     [payroll, selected],
   )
 

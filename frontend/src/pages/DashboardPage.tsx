@@ -69,7 +69,7 @@ export function DashboardPage() {
       if (!map.has(dept)) map.set(dept, { department: dept, present: 0, absent: 0 })
     }
     for (const row of stats) {
-      const emp = employees.find((e) => e.id === row.employee_id)
+      const emp = (employees || []).find((e) => e.id === row.employee_id)
       const dept = emp?.department || 'Unassigned'
       const bucket = map.get(dept) || { department: dept, present: 0, absent: 0 }
       bucket.present += row.present_days
@@ -81,7 +81,7 @@ export function DashboardPage() {
 
   const hoursChart = useMemo(
     () =>
-      stats.map((s) => ({
+      (stats || []).map((s) => ({
         name: s.employee_name.split(' ')[0],
         hours: Number(s.average_daily_hours),
       })),
@@ -90,7 +90,7 @@ export function DashboardPage() {
 
   const payrollChart = useMemo(
     () =>
-      payroll.map((p) => ({
+      (payroll || []).map((p) => ({
         name: p.employee?.name?.split(' ')[0] || `Emp ${p.employee_id}`,
         salary: Number(p.final_salary),
         deduction: Number(p.salary_deduction),
@@ -100,7 +100,7 @@ export function DashboardPage() {
 
   const trendChart = useMemo(() => {
     // Visualize backend attendance percentage distribution for the month (no client recalculation).
-    return stats.map((s) => ({
+    return (stats || []).map((s) => ({
       name: s.employee_name.split(' ')[0],
       attendance: Number(s.attendance_percentage),
     }))

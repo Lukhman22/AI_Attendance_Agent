@@ -127,10 +127,10 @@ export function AttendancePage() {
         annotationsApi.list(workDate).catch(() => [] as AttendanceAnnotation[])
       ])
       
-      const enrichedRecords = records.map(r => {
-        const emp = emps.find(e => e.employee_code === r.employee_code)
+      const enrichedRecords = (records || []).map(r => {
+        const emp = (emps || []).find(e => e.employee_code === r.employee_code)
         if (emp) {
-            const ann = annotations.find(a => a.employee_id === emp.id)
+            const ann = (annotations || []).find(a => a.employee_id === emp.id)
             if (ann) {
                 return { ...r, annotation: ann }
             }
@@ -155,7 +155,7 @@ export function AttendancePage() {
   }, [date])
 
   const departmentOptions = useMemo(() => {
-    return [...new Set(employees.map((e) => e.department || 'Unassigned'))].sort()
+    return [...new Set((employees || []).map((e) => e.department || 'Unassigned'))].sort()
   }, [employees])
 
   const enriched = useMemo(
@@ -179,7 +179,7 @@ export function AttendancePage() {
 
   async function handleSaveAnnotation() {
     if (!selectedRecord) return
-    const emp = employees.find(e => e.employee_code === selectedRecord.employee_code)
+    const emp = (employees || []).find(e => e.employee_code === selectedRecord.employee_code)
     if (!emp) return
     setSavingAnnotation(true)
     try {

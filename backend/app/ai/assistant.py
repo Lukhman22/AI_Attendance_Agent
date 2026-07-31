@@ -309,7 +309,13 @@ class HRAssistant:
                     PayrollGenerator(self.db, SalaryEngine(), settings).generate_month(year, month)
                     payroll = self.payroll_repo.get_for_employee_period(target_emp.id, year, month)
                 
-                if not payroll: return build_response(f"Payroll could not be generated for {target_emp.name} in {year}-{month:02d} (no attendance data).", service="Payroll Service")
+                if not payroll:
+                    from ..models.EmployeeSalary import EmployeeSalary
+                    emp_sal = self.db.query(EmployeeSalary).filter(EmployeeSalary.employee_id == target_emp.employee_code).first()
+                    if emp_sal:
+                        return build_response(f"The configured salary for {target_emp.name} is {emp_sal.monthly_salary}.", service="Payroll Service")
+                    else:
+                        return build_response(f"Salary has not been configured for this employee.", service="Payroll Service")
                 
                 start_date = date(year, month, 1)
                 end_date = date(year, month, calendar.monthrange(year, month)[1])
