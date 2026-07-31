@@ -20,8 +20,7 @@ import { formatMoney, formatNumber, formatPercent, todayISO } from '../utils/for
 import { AIAssistant } from '../components/AIAssistant'
 
 export function AIInsightsPage() {
-  const { insightsRefreshKey } = useApp()
-  const [workDate, setWorkDate] = useState(todayISO())
+  const { insightsRefreshKey, aiWorkDate: workDate, setAiWorkDate: setWorkDate } = useApp()
   const dateObj = new Date(workDate || todayISO())
   const year = dateObj.getFullYear()
   const month = dateObj.getMonth() + 1
@@ -127,7 +126,7 @@ export function AIInsightsPage() {
               </div>
               {alerts.length ? (
                 <div className="max-h-80 space-y-2 overflow-y-auto">
-                  {alerts.map((alert) => (
+                  {alerts.map((alert: SmartAlert) => (
                     <div
                       key={alert.id}
                       className="rounded-xl border border-ink-100 p-3 text-sm dark:border-ink-800"
@@ -153,7 +152,7 @@ export function AIInsightsPage() {
               <h2 className="mb-5 text-xs font-bold uppercase tracking-widest text-ink-500 dark:text-ink-400">Key Findings</h2>
               {recommendations.length ? (
                 <div className="mt-4 space-y-3">
-                  {recommendations.map((rec) => (
+                  {recommendations.map((rec: { id: number; title: string; reason: string; confidence: string }) => (
                     <div key={rec.id} className="rounded-xl border border-ink-100 p-4 dark:border-ink-800">
                       <div className="flex items-center justify-between gap-2">
                         <p className="font-medium">{rec.title}</p>

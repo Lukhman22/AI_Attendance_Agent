@@ -1,32 +1,24 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Send, Bot, ChevronDown, ChevronUp, Mic, Square, Volume2, VolumeX, Copy, Check, Sparkles } from 'lucide-react'
+import React, { useRef, useEffect } from 'react'
+import { Send, Bot, ChevronDown, ChevronUp, Mic, Square, Volume2, VolumeX, Copy, Check, Sparkles, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { aiApi } from '../services'
 import { Card } from './ui'
 import { clsx } from '../utils/format'
-
-interface Message {
-  id: string
-  role: 'user' | 'ai'
-  content: string
-  references?: Record<string, any>
-  isError?: boolean
-  timestamp?: number
-}
+import { useApp } from '../context/AppContext'
 
 function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  
+  const [copied, setCopied] = React.useState(false)
+
   const handleCopy = () => {
     navigator.clipboard.writeText(text)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
-  
+
   return (
-    <button 
-      onClick={handleCopy} 
-      className="rounded-md p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-600 dark:hover:bg-ink-800 dark:hover:text-ink-300" 
+    <button
+      onClick={handleCopy}
+      className="rounded-md p-1.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-600 dark:hover:bg-ink-800 dark:hover:text-ink-300"
       title="Copy message"
     >
       {copied ? <Check className="h-3.5 w-3.5 text-brand-600" /> : <Copy className="h-3.5 w-3.5" />}
@@ -44,24 +36,38 @@ function TypingIndicator() {
   )
 }
 
-export function AIAssistant({ context: dashboardContext }: { context?: { work_date?: string; year?: number; month?: number } }) {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [chatContext, setChatContext] = useState<Record<string, any>>({})
+export function AIAssistant({
+  context: dashboardContext,
+}: {
+  context?: { work_date?: string; year?: number; month?: number }
+}) {
+  // All conversation state lives in AppContext — survives navigation
+  const {
+    aiMessages: messages,
+    setAiMessages: setMessages,
+    aiChatContext: chatContext,
+    setAiChatContext: setChatContext,
+    clearAiConversation,
+  } = useApp()
+
+  const [input, setInput] = React.useState('')
+  const [isLoading, setIsLoading] = React.useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  
-  // Voice states
-  const [isRecording, setIsRecording] = useState(false)
-  const [isTranscribing, setIsTranscribing] = useState(false)
-  const [isSpeaking, setIsSpeaking] = useState(false)
-  const [isMuted, setIsMuted] = useState(false)
+
+  // Voice states (ephemeral — fine to reset on navigation)
+  const [isRecording, setIsRecording] = React.useState(false)
+  const [isTranscribing, setIsTranscribing] = React.useState(false)
+  const [isSpeaking, setIsSpeaking] = React.useState(false)
+  const [isMuted, setIsMuted] = React.useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
 
+  // Merge incoming dashboard context into persistent chat context
   useEffect(() => {
-    setChatContext(prev => ({ ...prev, ...dashboardContext }))
-  }, [dashboardContext])
+    if (dashboardContext && Object.keys(dashboardContext).length > 0) {
+      setChatContext((prev) => ({ ...prev, ...dashboardContext }))
+    }
+  }, [dashboardContext, setChatContext])
 
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -115,17 +121,17 @@ export function AIAssistant({ context: dashboardContext }: { context?: { work_da
         setIsRecording(false)
         setIsTranscribing(true)
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        
-        stream.getTracks().forEach(track => track.stop())
+
+        stream.getTracks().forEach((track) => track.stop())
         mediaRecorderRef.current = null
-        
+
         try {
           const { text } = await aiApi.transcribe(audioBlob)
           if (text) {
             await handleSend(text, true)
           }
-        } catch (error) {
-          toast.error("Failed to transcribe audio or model unavailable.")
+        } catch {
+          toast.error('Failed to transcribe audio or model unavailable.')
         } finally {
           setIsTranscribing(false)
         }
@@ -133,51 +139,55 @@ export function AIAssistant({ context: dashboardContext }: { context?: { work_da
 
       mediaRecorder.start()
       setIsRecording(true)
-    } catch (error) {
-      toast.error("Microphone permission denied.")
+    } catch {
+      toast.error('Microphone permission denied.')
     }
   }
 
-  const handleSend = async (question: string, isVoice: boolean = false) => {
+  const handleSend = async (question: string, isVoice = false) => {
     if (!question.trim() || isLoading) return
 
-    const userMessage: Message = {
+    const userMessage = {
       id: Date.now().toString(),
-      role: 'user',
+      role: 'user' as const,
       content: question,
       timestamp: Date.now(),
     }
-    
-    setMessages(prev => [...prev, userMessage])
+
+    setMessages((prev) => [...prev, userMessage])
     setInput('')
     setIsLoading(true)
 
     try {
       const sendContext = { ...chatContext, input_source: isVoice ? 'Voice' : 'Typed' }
-      // @ts-ignore - response typing may not have context yet
+      // @ts-ignore
       const response = await aiApi.ask(question, sendContext)
-      const aiMessage: Message = {
+      const aiMessage = {
         id: (Date.now() + 1).toString(),
-        role: 'ai',
+        role: 'ai' as const,
         content: response.answer,
         references: response.references,
         timestamp: Date.now(),
       }
-      setMessages(prev => [...prev, aiMessage])
+      setMessages((prev) => [...prev, aiMessage])
       // @ts-ignore
       if (response.context) setChatContext(response.context)
       if (isVoice) {
         speakText(response.answer)
       }
-    } catch (error: any) {
-      const errorMessage: Message = {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { detail?: string } }; message?: string }
+      const errorMessage = {
         id: (Date.now() + 1).toString(),
-        role: 'ai',
-        content: error?.response?.data?.detail || error?.message || "Sorry, I encountered an error while trying to process your request.",
+        role: 'ai' as const,
+        content:
+          err?.response?.data?.detail ||
+          err?.message ||
+          'Sorry, I encountered an error while trying to process your request.',
         isError: true,
         timestamp: Date.now(),
       }
-      setMessages(prev => [...prev, errorMessage])
+      setMessages((prev) => [...prev, errorMessage])
     } finally {
       setIsLoading(false)
     }
@@ -186,8 +196,13 @@ export function AIAssistant({ context: dashboardContext }: { context?: { work_da
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSend(input)
+      void handleSend(input)
     }
+  }
+
+  const handleNewChat = () => {
+    clearAiConversation()
+    stopSpeaking()
   }
 
   return (
@@ -205,23 +220,33 @@ export function AIAssistant({ context: dashboardContext }: { context?: { work_da
         </div>
         <div className="flex items-center gap-2">
           {isSpeaking && (
-            <button 
-              onClick={stopSpeaking} 
+            <button
+              onClick={stopSpeaking}
               className="flex items-center gap-1.5 rounded-md bg-rose-50 px-2.5 py-1.5 text-xs font-medium text-rose-600 transition-colors hover:bg-rose-100 dark:bg-rose-900/30 dark:text-rose-400"
             >
               <Square className="h-3 w-3" fill="currentColor" /> Stop
             </button>
           )}
-          <button 
+          <button
             onClick={() => {
               setIsMuted(!isMuted)
               if (!isMuted) stopSpeaking()
             }}
             className="rounded-full p-2 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-600 dark:hover:bg-ink-800 dark:hover:text-ink-200"
-            title={isMuted ? "Unmute Voice" : "Mute Voice"}
+            title={isMuted ? 'Unmute Voice' : 'Mute Voice'}
           >
             {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
+          {messages.length > 0 && (
+            <button
+              onClick={handleNewChat}
+              className="flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-700 dark:hover:bg-ink-800 dark:hover:text-ink-200"
+              title="New Chat"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              New Chat
+            </button>
+          )}
         </div>
       </div>
 
@@ -258,15 +283,17 @@ export function AIAssistant({ context: dashboardContext }: { context?: { work_da
                         <span className="text-[13px] font-semibold text-ink-900 dark:text-ink-50">AI Assistant</span>
                         <span className="text-[11px] font-medium text-ink-400">{formatTime(msg.timestamp)}</span>
                       </div>
-                      
-                      <div className={clsx(
-                        'rounded-2xl rounded-tl-sm px-5 py-4 text-[15px] leading-relaxed shadow-sm ring-1',
-                        msg.isError 
-                          ? 'bg-rose-50 text-rose-800 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-900/50'
-                          : 'bg-white text-ink-800 ring-ink-200/60 dark:bg-ink-900/50 dark:text-ink-200 dark:ring-ink-800/60'
-                      )}>
+
+                      <div
+                        className={clsx(
+                          'rounded-2xl rounded-tl-sm px-5 py-4 text-[15px] leading-relaxed shadow-sm ring-1',
+                          msg.isError
+                            ? 'bg-rose-50 text-rose-800 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-900/50'
+                            : 'bg-white text-ink-800 ring-ink-200/60 dark:bg-ink-900/50 dark:text-ink-200 dark:ring-ink-800/60',
+                        )}
+                      >
                         <pre className="whitespace-pre-wrap font-sans text-[15px]">{msg.content}</pre>
-                        
+
                         {msg.references && Object.keys(msg.references).length > 0 && (
                           <div className="mt-4 border-t border-ink-100 pt-4 dark:border-ink-800">
                             <References references={msg.references} />
@@ -282,7 +309,7 @@ export function AIAssistant({ context: dashboardContext }: { context?: { work_da
                 )}
               </div>
             ))}
-            
+
             {(isLoading || isTranscribing) && (
               <div className="flex justify-start">
                 <div className="flex max-w-[92%] gap-4">
@@ -304,8 +331,8 @@ export function AIAssistant({ context: dashboardContext }: { context?: { work_da
                 </div>
               </div>
             )}
-            
-            {/* Invisible element to scroll to */}
+
+            {/* Invisible scroll anchor */}
             <div ref={messagesEndRef} className="h-px" />
           </div>
         )}
@@ -315,36 +342,36 @@ export function AIAssistant({ context: dashboardContext }: { context?: { work_da
       <div className="shrink-0 border-t border-ink-100 bg-white p-4 dark:border-ink-800 dark:bg-ink-950 sm:p-6">
         <div className="mx-auto max-w-3xl">
           <div className="relative flex items-end gap-2 rounded-2xl bg-ink-50 p-1.5 ring-1 ring-ink-200 transition-shadow focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-500 dark:bg-ink-900/50 dark:ring-ink-800 dark:focus-within:bg-ink-900">
-            <input 
+            <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isRecording ? "Listening to your voice..." : "Message AI Assistant..."}
+              placeholder={isRecording ? 'Listening to your voice...' : 'Message AI Assistant...'}
               disabled={isLoading || isRecording || isTranscribing}
               className="min-h-[44px] w-full border-0 bg-transparent px-4 py-2.5 text-[15px] text-ink-900 placeholder:text-ink-400 focus:outline-none focus:ring-0 dark:text-ink-50 dark:placeholder:text-ink-600"
             />
             <div className="flex shrink-0 items-center gap-1.5 pr-1.5 pb-1.5">
               <button
-                onClick={handleMicrophoneClick}
+                onClick={() => void handleMicrophoneClick()}
                 disabled={isLoading || isTranscribing || !('mediaDevices' in navigator)}
                 className={clsx(
                   'flex h-8 w-8 items-center justify-center rounded-xl transition-all',
-                  isRecording 
-                    ? 'animate-pulse bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400' 
-                    : 'text-ink-400 hover:bg-ink-200 hover:text-ink-700 dark:hover:bg-ink-800 dark:hover:text-ink-200'
+                  isRecording
+                    ? 'animate-pulse bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
+                    : 'text-ink-400 hover:bg-ink-200 hover:text-ink-700 dark:hover:bg-ink-800 dark:hover:text-ink-200',
                 )}
-                title={isRecording ? "Stop Recording" : "Use Voice"}
+                title={isRecording ? 'Stop Recording' : 'Use Voice'}
               >
                 {isRecording ? <Square className="h-4 w-4" fill="currentColor" /> : <Mic className="h-4 w-4" />}
               </button>
-              <button 
-                onClick={() => handleSend(input, false)}
+              <button
+                onClick={() => void handleSend(input, false)}
                 disabled={isLoading || isRecording || isTranscribing || !input.trim()}
                 className={clsx(
                   'flex h-8 w-8 items-center justify-center rounded-xl transition-all',
                   input.trim() && !isLoading && !isRecording && !isTranscribing
                     ? 'bg-brand-600 text-white shadow-sm hover:bg-brand-700'
-                    : 'bg-ink-200 text-ink-400 dark:bg-ink-800 dark:text-ink-600'
+                    : 'bg-ink-200 text-ink-400 dark:bg-ink-800 dark:text-ink-600',
                 )}
                 title="Send Message"
               >
@@ -361,8 +388,8 @@ export function AIAssistant({ context: dashboardContext }: { context?: { work_da
   )
 }
 
-function References({ references }: { references: Record<string, any> }) {
-  const [isOpen, setIsOpen] = useState(false)
+function References({ references }: { references: Record<string, unknown> }) {
+  const [isOpen, setIsOpen] = React.useState(false)
 
   return (
     <div className="w-full">
@@ -373,7 +400,7 @@ function References({ references }: { references: Record<string, any> }) {
         {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
         {isOpen ? 'Hide Data Sources' : 'View Data Sources'}
       </button>
-      
+
       {isOpen && (
         <div className="mt-3 overflow-hidden rounded-xl border border-ink-200/60 bg-ink-50/50 animate-fade-in dark:border-ink-800/60 dark:bg-ink-900/30">
           <div className="max-h-[200px] overflow-y-auto p-3 text-[11px] font-mono leading-relaxed text-ink-700 dark:text-ink-300">
@@ -381,7 +408,11 @@ function References({ references }: { references: Record<string, any> }) {
               <div key={key} className="mb-2 last:mb-0">
                 <span className="font-semibold text-ink-900 dark:text-ink-100">{key}:</span>{' '}
                 <span>
-                  {Array.isArray(value) ? value.join(', ') : typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                  {Array.isArray(value)
+                    ? value.join(', ')
+                    : typeof value === 'object'
+                      ? JSON.stringify(value)
+                      : String(value)}
                 </span>
               </div>
             ))}

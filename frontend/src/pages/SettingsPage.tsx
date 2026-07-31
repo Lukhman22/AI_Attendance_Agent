@@ -46,7 +46,7 @@ export function SettingsPage() {
   const handleSave = async () => {
     setSaving(true)
     try {
-      await settingsApi.updateSettings(settings)
+      await settingsApi.updateSettings(settings as unknown as Record<string, unknown>)
       toast.success('Notification settings saved successfully!')
     } catch (error) {
       toast.error(getErrorMessage(error, 'Failed to save settings'))

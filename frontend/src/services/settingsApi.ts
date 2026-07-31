@@ -1,23 +1,21 @@
-import axios from 'axios';
-
-const API_URL = '/api/v1/settings';
+import { api } from './apiClient';
 
 export const settingsApi = {
   getSettings: async () => {
-    const response = await axios.get(API_URL);
+    const response = await api.get('/settings');
     return response.data;
   },
-  
-  updateSettings: async (settingsData: any) => {
-    const response = await axios.put(API_URL, settingsData);
+
+  updateSettings: async (settingsData: Record<string, unknown>) => {
+    const response = await api.put('/settings', settingsData);
     return response.data;
   },
-  
+
   testTelegram: async (token: string, chatId: string) => {
-    const response = await axios.post(`${API_URL}/test-telegram`, {
+    const response = await api.post('/settings/test-telegram', {
       telegram_bot_token: token,
-      telegram_chat_id: chatId
+      telegram_chat_id: chatId,
     });
     return response.data;
-  }
+  },
 };
