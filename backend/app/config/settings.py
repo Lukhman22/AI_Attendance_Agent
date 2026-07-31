@@ -162,12 +162,11 @@ class Settings(BaseModel):
         )
     )
 
-    # Optional local employee directory (salary / master data for attendance identity enrichment)
+    # Optional local employee directory (salary / master data for attendance identity enrichment).
+    # Set EMPLOYEE_DIRECTORY_FILE env var to a CSV path to enable this feature.
+    # Defaults to None — no pre-loaded directory on fresh installs.
     employee_directory_file: str | None = Field(
-        default_factory=lambda: _env(
-            "EMPLOYEE_DIRECTORY_FILE",
-            str(PROJECT_ROOT / "sample_data" / "employees.csv"),
-        )
+        default_factory=lambda: _env("EMPLOYEE_DIRECTORY_FILE", None)
     )
     auto_register_employees_from_attendance: bool = Field(
         default_factory=lambda: _env_bool("AUTO_REGISTER_EMPLOYEES_FROM_ATTENDANCE", True)

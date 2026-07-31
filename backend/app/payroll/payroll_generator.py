@@ -43,7 +43,7 @@ class PayrollGenerator:
         for row in month_rows:
             by_employee.setdefault(row.employee_id, []).append(row)
 
-        # Drop stale payroll (e.g. demo seed employees with no attendance this month)
+        # Drop existing payroll for this period before regenerating
         self._payroll.delete_for_period(year, month)
 
         from sqlalchemy import select
