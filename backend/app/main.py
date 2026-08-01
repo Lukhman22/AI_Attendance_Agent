@@ -36,28 +36,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
 
-        # 0.1 One-time cleanup: remove known demo/seed employees
-        # These are employee codes that were created only for testing/development.
-        # Real employees imported from attendance CSVs are NOT affected.
-        DEMO_EMPLOYEE_CODES = {"EMP-ARJUN"}
-        from .database.session import SessionLocal as _SL0
-        from .models import Employee as _Emp, EmployeeSalary as _EmpSal, Attendance as _Att, Payroll as _Pay
-        _db0 = _SL0()
-        try:
-            for _code in DEMO_EMPLOYEE_CODES:
-                _emp = _db0.query(_Emp).filter(_Emp.employee_code == _code).first()
-                if _emp:
-                    # Remove associated salary record first
-                    _db0.query(_EmpSal).filter(_EmpSal.employee_id == _code).delete()
-                    # Cascade delete attendance and payroll via ORM relationship
-                    _db0.delete(_emp)
-                    logger.info("Removed demo employee %s from database.", _code)
-            _db0.commit()
-        except Exception as _e:
-            logger.warning("Demo cleanup failed (non-fatal): %s", _e)
-            _db0.rollback()
-        finally:
-            _db0.close()
+        # Removed demo employee cleanup logic as we no longer seed demo employees
 
         # 1. Startup Notification
         from .database.session import SessionLocal

@@ -1,2 +1,0 @@
-name,min_working_hours,max_payable_hours,overtime_paid,break_duration_required
-default,8,8,false,true

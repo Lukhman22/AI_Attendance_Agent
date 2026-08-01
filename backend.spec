@@ -15,8 +15,6 @@ hidden_imports = [
 ]
 
 datas = []
-if os.path.exists('sample_data'):
-    datas.append(('sample_data', 'sample_data'))
 
 datas += collect_data_files('faster_whisper')
 datas += collect_data_files('ctranslate2')

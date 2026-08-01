@@ -80,19 +80,12 @@ class AttendanceTracker:
             self._ignored.delete_for_employee_date(row.employee_code, row.work_date)
             employees_touched.add(employee.employee_code)
 
-            try:
-                emp_salary = resolve_salary(employee, self._db)
-            except ValueError:
-                emp_salary = Decimal("0.00")
-            daily_salary, hourly_salary = self._salary_engine.daily_and_hourly(
-                emp_salary,
-                employee.working_days_per_month or 26,
-            )
-            
+            # Attendance must ONLY track hours and status.
+            # Salary deductions MUST be handled by the Payroll Generator.
             normalized = self._calculator.calculate_daily(
                 row,
-                hourly_salary=hourly_salary,
-                daily_salary=daily_salary,
+                hourly_salary=Decimal("0.00"),
+                daily_salary=Decimal("0.00"),
             )
 
             existing = self._attendance.get_by_employee_and_date(employee.id, row.work_date)
@@ -106,7 +99,7 @@ class AttendanceTracker:
                 overtime_hours=normalized.overtime_hours,
                 status=normalized.status,
                 missing_hours=normalized.missing_hours,
-                daily_deduction=normalized.daily_deduction,
+                daily_deduction=Decimal("0.00"),  # Removed duplicate logic
                 source=source,
             )
             self._attendance.upsert(record)

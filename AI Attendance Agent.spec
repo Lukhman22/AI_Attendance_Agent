@@ -22,10 +22,6 @@ frontend_dist = os.path.join('frontend', 'dist')
 if os.path.exists(frontend_dist):
     datas.append((frontend_dist, 'frontend/dist'))
 
-# Ensure sample_data is bundled if present
-if os.path.exists('sample_data'):
-    datas.append(('sample_data', 'sample_data'))
-
 # Collect data for specific libraries
 datas += collect_data_files('faster_whisper')
 datas += collect_data_files('ctranslate2')

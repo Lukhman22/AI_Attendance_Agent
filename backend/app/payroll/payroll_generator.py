@@ -37,7 +37,10 @@ class PayrollGenerator:
         working_days = self._default_working_days()
         required_hours = self._required_hours()
 
-        # Only employees with uploaded attendance for this month
+        # Pull all active employees so Payroll matches HR Reports exactly
+        active_employees = self._employees.list_active()
+
+        # Group attendance by employee
         month_rows = self._attendance.list_for_range(start, end)
         by_employee: dict[int, list] = {}
         for row in month_rows:
@@ -46,28 +49,25 @@ class PayrollGenerator:
         # Drop existing payroll for this period before regenerating
         self._payroll.delete_for_period(year, month)
 
-        from sqlalchemy import select
+        from sqlalchemy import select, func
         from ..models import EmployeeSalary
         from ..core.exceptions import ApplicationError
 
         missing_salaries = []
         emp_salary_map = {}
 
-        for employee_id, records in sorted(by_employee.items()):
-            employee = records[0].employee or self._employees.get_by_id(employee_id)
-            if employee is None:
-                logger.warning("Skipping payroll for missing employee_id=%s", employee_id)
-                continue
-
-            stmt = select(EmployeeSalary).where(EmployeeSalary.employee_id == employee.employee_code)
+        # 1. Validate all active employees have salaries
+        for employee in active_employees:
+            stmt = select(EmployeeSalary).where(func.lower(EmployeeSalary.employee_id) == func.lower(employee.employee_code))
             salary_record = self._db.scalars(stmt).first()
             
             if not salary_record or salary_record.monthly_salary <= 0:
                 missing_salaries.append(f"{employee.employee_code} ({employee.name})")
             else:
-                emp_salary_map[employee_id] = salary_record.monthly_salary
+                emp_salary_map[employee.id] = salary_record.monthly_salary
 
         if missing_salaries:
+            logger.error("Missing salaries for: %s", missing_salaries)
             raise ApplicationError(
                 "Cannot generate payroll. Some employees are missing salary configurations.",
                 code="missing_salary",
@@ -75,10 +75,9 @@ class PayrollGenerator:
             )
 
         results: list[Payroll] = []
-        for employee_id, records in sorted(by_employee.items()):
-            employee = records[0].employee or self._employees.get_by_id(employee_id)
-            if employee is None:
-                continue
+        # 2. Generate payroll for EVERY active employee
+        for employee in active_employees:
+            records = by_employee.get(employee.id, [])
 
             present_days = sum(1 for r in records if r.status == "present")
             absent_days = sum(1 for r in records if r.status == "absent")
@@ -89,7 +88,7 @@ class PayrollGenerator:
 
             total_hours = sum((r.work_duration_hours or Decimal("0") for r in records), Decimal("0"))
             
-            emp_salary = emp_salary_map[employee_id]
+            emp_salary = emp_salary_map[employee.id]
             
             breakdown = self._salary_engine.calculate_from_attendance(
                 records,

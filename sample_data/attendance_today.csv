@@ -1,6 +1,0 @@
-Employee ID,Employee Name,Department,Date,Check-In Time,Check-Out Time,Work Duration,Break Duration,Overtime,Attendance Status
-E001,John Doe,Engineering,2026-07-14,09:00,17:00,7.25,1.00,0.00,Present
-E002,Jane Smith,HR,2026-07-14,09:00,18:00,8.00,1.00,0.50,Present
-E003,Alex Brown,Operations,2026-07-14,,,,,,Absent
-E004,Priya Patel,Finance,2026-07-14,09:00,18:00,8.00,1.00,0.00,Present
-E005,Michael Chen,Sales,2026-07-14,09:00,,,0.50,0.00,Missing Checkout
