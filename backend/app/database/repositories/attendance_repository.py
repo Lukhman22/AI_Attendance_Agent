@@ -84,3 +84,20 @@ class AttendanceRepository:
             .order_by(Employee.name)
         )
         return list(self._db.execute(stmt).all())
+
+    def stats_all_time(self) -> list[tuple[Employee, int, int, int, int, int, float]]:
+        stmt: Select = (
+            select(
+                Employee,
+                func.count().filter(Attendance.status == "present").label("present_days"),
+                func.count().filter(Attendance.status == "absent").label("absent_days"),
+                func.count().filter(Attendance.status == "leave").label("leave_days"),
+                func.count().filter(Attendance.status == "weekly_off").label("weekly_offs"),
+                func.count().filter(Attendance.status == "holiday").label("holidays"),
+                func.coalesce(func.sum(Attendance.work_duration_hours), 0).label("total_hours"),
+            )
+            .outerjoin(Attendance, Attendance.employee_id == Employee.id)
+            .group_by(Employee.id)
+            .order_by(Employee.name)
+        )
+        return list(self._db.execute(stmt).all())

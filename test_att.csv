@@ -1,0 +1,4 @@
+Employee ID,Employee Name,Date,Check In,Check Out,Break Duration,Status
+E01,Arjun,2026-07-01,09:00,17:00,01:00,Present
+E01,Arjun,2026-07-02,09:00,17:00,01:00,Present
+E01,Arjun,2026-07-03,,,,Absent

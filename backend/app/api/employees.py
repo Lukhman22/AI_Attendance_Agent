@@ -14,7 +14,17 @@ router = APIRouter(prefix="/employees", tags=["employees"])
 
 @router.get("", response_model=list[EmployeeRead])
 def list_employees(db: Session = Depends(get_db)) -> list[EmployeeRead]:
-    return [EmployeeRead.model_validate(e) for e in EmployeeRepository(db).list_all()]
+    from ..database.repositories import AttendanceRepository
+    from ..attendance.percentage import calculate_attendance_percentage
+
+    stats = AttendanceRepository(db).stats_all_time()
+    results = []
+    for emp, present, absent, leave, _, _, _ in stats:
+        pct = calculate_attendance_percentage(present, absent, leave)
+        emp_dict = EmployeeRead.model_validate(emp).model_dump()
+        emp_dict["attendance_percentage"] = pct
+        results.append(EmployeeRead.model_validate(emp_dict))
+    return results
 
 
 @router.post("", response_model=EmployeeRead)

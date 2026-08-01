@@ -43,6 +43,7 @@ class EmployeeRead(ORMModel):
     department: str | None
     working_days_per_month: int
     is_active: bool
+    attendance_percentage: float = 0.0
 
 
 class AttendanceRecordRead(ORMModel):

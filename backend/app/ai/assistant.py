@@ -342,8 +342,8 @@ class HRAssistant:
                     ans += f"- Underworked Days: {underworked_days}\n"
                     ans += f"- Overtime Days: {overtime_days} (does not increase salary per HR rules)\n"
                     
-                    total_days = payroll.present_days + payroll.absent_days + payroll.leave_days
-                    percentage = (payroll.present_days / total_days * 100) if total_days > 0 else 0
+                    from ..attendance.percentage import calculate_attendance_percentage
+                    percentage = calculate_attendance_percentage(payroll.present_days, payroll.absent_days, payroll.leave_days)
                     ans += f"- Attendance %: {percentage:.1f}%\n"
                     ans += f"- Total Deduction: {payroll.salary_deduction}\n"
                     ans += f"- Final Salary: {payroll.final_salary}\n"

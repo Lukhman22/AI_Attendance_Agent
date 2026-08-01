@@ -36,8 +36,41 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
 
-        # Removed demo employee cleanup logic as we no longer seed demo employees
+        # Legacy demo cleanup
+        from .database.session import SessionLocal
+        from .models import (
+            Employee, Attendance, Payroll, EmployeeSalary,
+            AiDailyInsight, AiMonthlyInsight, ExecutiveSummary,
+            NotificationLog, SmartAlert, AiRecommendation
+        )
 
+        db = SessionLocal()
+        try:
+            all_emps = db.query(Employee).all()
+            if all_emps:
+                legacy_codes = {'E01', 'K6K016', 'EMP-ARJUN', 'John', 'EMP-JOHN', 'E999'}
+                legacy_names = {'Arjun', 'John', 'Test Emp', 'John Doe', 'Azeem'}
+                is_only_legacy = all(e.employee_code in legacy_codes or e.name in legacy_names for e in all_emps)
+                
+                if is_only_legacy:
+                    logger.info("Detected legacy demo data. Purging database to ensure clean slate.")
+                    db.query(Attendance).delete()
+                    db.query(Payroll).delete()
+                    db.query(EmployeeSalary).delete()
+                    db.query(AiDailyInsight).delete()
+                    db.query(AiMonthlyInsight).delete()
+                    db.query(ExecutiveSummary).delete()
+                    db.query(NotificationLog).delete()
+                    db.query(SmartAlert).delete()
+                    db.query(AiRecommendation).delete()
+                    db.query(Employee).delete()
+                    db.commit()
+                    logger.info("Legacy demo data purged successfully.")
+        except Exception as e:
+            logger.error(f"Error during legacy demo cleanup: {e}")
+            db.rollback()
+        finally:
+            db.close()
         # 1. Startup Notification
         from .database.session import SessionLocal
         from .services.notification_service import NotificationService

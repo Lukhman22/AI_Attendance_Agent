@@ -74,7 +74,7 @@ export function EmployeesPage() {
       })
       .map((e) => ({
         ...e,
-        attendance_percentage: statsMap.get(e.id)?.attendance_percentage ?? 0,
+        attendance_percentage: e.attendance_percentage ?? 0,
         leave_days: statsMap.get(e.id)?.leave_days ?? 0,
         average_daily_hours: statsMap.get(e.id)?.average_daily_hours ?? 0,
       }))
@@ -196,7 +196,7 @@ export function EmployeesPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl bg-ink-50/50 p-4 ring-1 ring-inset ring-ink-200/50 dark:bg-ink-900/30 dark:ring-ink-800/50">
                   <p className="text-xs font-medium text-ink-500">Attendance %</p>
-                  <p className="text-xl font-semibold text-ink-900 dark:text-ink-100">{formatPercent(selectedStats?.attendance_percentage)}</p>
+                  <p className="text-xl font-semibold text-ink-900 dark:text-ink-100">{formatPercent(selected?.attendance_percentage ?? 0)}</p>
                 </div>
                 <div className="rounded-xl bg-ink-50/50 p-4 ring-1 ring-inset ring-ink-200/50 dark:bg-ink-900/30 dark:ring-ink-800/50">
                   <p className="text-xs font-medium text-ink-500">Avg Daily Hours</p>

@@ -5,6 +5,7 @@ export interface Employee {
   department: string | null
   working_days_per_month: number
   is_active: boolean
+  attendance_percentage?: number | string
 }
 
 export interface AttendanceAnnotation {

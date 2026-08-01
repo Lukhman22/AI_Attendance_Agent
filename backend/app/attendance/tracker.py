@@ -142,12 +142,9 @@ class AttendanceTracker:
         results: list[dict] = []
         for employee, present, absent, leave, weekly_offs, holidays, total_hours in stats:
             worked_days = present or 0
-            total_days = present + absent + leave
-            percentage = Decimal("0.00")
-            if total_days > 0:
-                percentage = (Decimal(present) / Decimal(total_days) * Decimal("100")).quantize(
-                    Decimal("0.01"), rounding=ROUND_HALF_UP
-                )
+            from .percentage import calculate_attendance_percentage
+            percentage = Decimal(str(calculate_attendance_percentage(present, absent, leave)))
+            
             avg = Decimal("0.00")
             if worked_days > 0:
                 avg = (Decimal(str(total_hours)) / Decimal(worked_days)).quantize(
