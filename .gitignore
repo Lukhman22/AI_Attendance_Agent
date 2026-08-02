@@ -79,3 +79,5 @@ __pycache__/
 # Uploads & generated reports
 uploads/
 reports/
+.env
+.env.bak
