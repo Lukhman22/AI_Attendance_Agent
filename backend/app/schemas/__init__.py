@@ -58,8 +58,12 @@ class AttendanceRecordRead(ORMModel):
     status: str
     missing_hours: Decimal
     daily_deduction: Decimal
+    leave_reason: str | None = None
     source: str
     employee: EmployeeRead | None = None
+
+class AttendanceUpdateReasonRequest(BaseModel):
+    leave_reason: str | None = None
 
 
 class AttendanceIngestResult(BaseModel):

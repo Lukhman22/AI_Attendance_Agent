@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { AlertTriangle, Upload, Loader2, CheckCircle2 } from 'lucide-react'
-import { attendanceApi, employeesApi, annotationsApi } from '../services'
+import { attendanceApi, employeesApi } from '../services'
 import { getErrorMessage } from '../services/apiClient'
-import type { AttendanceRecord, DailySummary, Employee, IgnoredAttendanceRecord, AttendanceAnnotation } from '../types/api'
+import type { AttendanceRecord, DailySummary, Employee, IgnoredAttendanceRecord } from '../types/api'
 import { DataTable } from '../components/DataTable'
 import { Badge, Card, Input, PageHeader, Select, Skeleton, statusTone, Modal, Button } from '../components/ui'
 import { useApp } from '../context/AppContext'
@@ -120,25 +120,13 @@ export function AttendancePage() {
   async function load(workDate = date) {
     setLoading(true)
     try {
-      const [records, emps, summary, annotations] = await Promise.all([
+      const [records, emps, summary] = await Promise.all([
         attendanceApi.records(workDate),
         employeesApi.list(),
         attendanceApi.dailySummary(workDate).catch(() => null as DailySummary | null),
-        annotationsApi.list(workDate).catch(() => [] as AttendanceAnnotation[])
       ])
       
-      const enrichedRecords = (records || []).map(r => {
-        const emp = (emps || []).find(e => e.employee_code === r.employee_code)
-        if (emp) {
-            const ann = (annotations || []).find(a => a.employee_id === emp.id)
-            if (ann) {
-                return { ...r, annotation: ann }
-            }
-        }
-        return r
-      })
-      
-      setRows(enrichedRecords)
+      setRows(records || [])
       setEmployees(emps)
       setSummaryIgnored(summary?.details?.ignored_records || [])
     } catch (error) {
@@ -179,31 +167,30 @@ export function AttendancePage() {
 
   async function handleSaveAnnotation() {
     if (!selectedRecord) return
-    const emp = (employees || []).find(e => e.employee_code === selectedRecord.employee_code)
-    if (!emp) return
     setSavingAnnotation(true)
     try {
-      await annotationsApi.upsert(emp.id, date, annotationType, annotationNotes)
-      toast.success('Annotation saved')
+      const finalReason = annotationType === 'Other' ? annotationNotes : annotationType
+      await attendanceApi.updateReason(selectedRecord.id, finalReason)
+      toast.success('Reason saved')
       setAnnotationModalOpen(false)
       await load(date)
     } catch (e) {
-      toast.error(getErrorMessage(e, 'Failed to save annotation'))
+      toast.error(getErrorMessage(e, 'Failed to save reason'))
     } finally {
       setSavingAnnotation(false)
     }
   }
   
   async function handleDeleteAnnotation() {
-    if (!selectedRecord || !selectedRecord.annotation) return
+    if (!selectedRecord) return
     setSavingAnnotation(true)
     try {
-      await annotationsApi.delete(selectedRecord.annotation.id)
-      toast.success('Annotation deleted')
+      await attendanceApi.updateReason(selectedRecord.id, null)
+      toast.success('Reason removed')
       setAnnotationModalOpen(false)
       await load(date)
     } catch (e) {
-      toast.error(getErrorMessage(e, 'Failed to delete annotation'))
+      toast.error(getErrorMessage(e, 'Failed to remove reason'))
     } finally {
       setSavingAnnotation(false)
     }
@@ -384,38 +371,42 @@ export function AttendancePage() {
             {
               key: 'reason',
               header: 'Reason',
-              render: (r) => (
-                <div 
-                  className="cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => {
-                    setSelectedRecord(r)
-                    if (r.annotation) {
-                      setAnnotationType(r.annotation.annotation_type)
-                      setAnnotationNotes(r.annotation.notes || '')
-                    } else {
-                      setAnnotationType('Sick Leave')
-                      setAnnotationNotes('')
-                    }
-                    setAnnotationModalOpen(true)
-                  }}
-                >
-                  {r.annotation ? (
-                    <Badge tone="sky">
-                      {r.annotation.annotation_type}
-                    </Badge>
-                  ) : (
-                    <span className="text-xs text-ink-400 hover:text-ink-600 dark:hover:text-ink-300 underline underline-offset-2 decoration-dotted">
-                      Add Reason
-                    </span>
-                  )}
-                </div>
-              ),
+              render: (r) => {
+                if (r.status !== 'absent' && r.status !== 'leave') return <span className="text-ink-300">-</span>
+                return (
+                  <div 
+                    className="cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => {
+                      setSelectedRecord(r)
+                      if (r.leave_reason) {
+                        const isPreset = ANNOTATION_OPTIONS.includes(r.leave_reason)
+                        setAnnotationType(isPreset ? r.leave_reason : 'Other')
+                        setAnnotationNotes(isPreset ? '' : r.leave_reason)
+                      } else {
+                        setAnnotationType('Sick Leave')
+                        setAnnotationNotes('')
+                      }
+                      setAnnotationModalOpen(true)
+                    }}
+                  >
+                    {r.leave_reason ? (
+                      <Badge tone="sky">
+                        {r.leave_reason}
+                      </Badge>
+                    ) : (
+                      <span className="text-xs text-ink-400 hover:text-ink-600 dark:hover:text-ink-300 underline underline-offset-2 decoration-dotted">
+                        Add Reason
+                      </span>
+                    )}
+                  </div>
+                )
+              },
             },
           ]}
         />
       )}
       <Modal
-        title={selectedRecord?.annotation ? "Edit Reason" : "Add Reason"}
+        title={selectedRecord?.leave_reason ? "Edit Reason" : "Add Reason"}
         isOpen={annotationModalOpen}
         onClose={() => setAnnotationModalOpen(false)}
       >
@@ -452,7 +443,7 @@ export function AttendancePage() {
           </div>
           
           <div className="flex justify-end gap-3 pt-4">
-            {selectedRecord?.annotation && (
+            {selectedRecord?.leave_reason && (
               <Button 
                 variant="secondary" 
                 className="text-rose-600 border-rose-200 hover:bg-rose-50 mr-auto"

@@ -30,6 +30,7 @@ export interface AttendanceRecord {
   status: string
   missing_hours: number | string
   daily_deduction: number | string
+  leave_reason?: string | null
   annotation?: AttendanceAnnotation | null
 }
 

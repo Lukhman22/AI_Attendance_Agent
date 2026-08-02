@@ -43,6 +43,12 @@ export const attendanceApi = {
     })
     return Array.isArray(data) ? data : []
   },
+  updateReason: async (recordId: number, leaveReason: string | null) => {
+    const { data } = await api.put<AttendanceRecord>(`/attendance/records/${recordId}/reason`, {
+      leave_reason: leaveReason,
+    })
+    return data
+  },
 }
 
 export const annotationsApi = {

@@ -72,7 +72,28 @@ class ReportService:
         if fmt not in {"csv", "excel", "pdf"}:
             raise ApplicationError("Unsupported report format", code="report_format_invalid")
 
-        rows = self._build_rows(
+        if report_type == "daily_summary":
+            title = "Daily Attendance Report"
+            report_period = f"Reporting Date: {work_date.strftime('%d %B %Y')}"
+            filename_base = f"Daily_Attendance_{work_date.strftime('%d_%B_%Y')}"
+        elif report_type == "monthly_payroll":
+            title = "Monthly Payroll Report"
+            month_name = date(year, month, 1).strftime('%B')
+            report_period = f"Reporting Month: {month_name} {year}"
+            filename_base = f"Monthly_Payroll_{month_name}_{year}"
+        elif report_type == "attendance_stats":
+            title = "Attendance Statistics Report"
+            month_name = start_date.strftime('%B') if start_date else ""
+            year_val = start_date.strftime('%Y') if start_date else ""
+            report_period = f"Reporting Month: {month_name} {year_val}"
+            filename_base = f"Attendance_Statistics_{month_name}_{year_val}"
+        else:
+            title = report_type.replace("_", " ").title()
+            report_period = ""
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename_base = f"{report_type}_{stamp}"
+
+        rows, summary_data = self._build_rows(
             report_type=report_type,
             work_date=work_date,
             year=year,
@@ -80,14 +101,13 @@ class ReportService:
             start_date=start_date,
             end_date=end_date,
         )
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename_base = f"{report_type}_{stamp}"
+
         if fmt == "csv":
             path = self._write_csv(filename_base, rows)
         elif fmt == "excel":
-            path = self._write_excel(filename_base, rows)
+            path = self._write_excel(filename_base, rows, title=title, report_period=report_period, summary_data=summary_data)
         else:
-            path = self._write_pdf(filename_base, rows, title=report_type.replace("_", " ").title())
+            path = self._write_pdf(filename_base, rows, title=title, report_period=report_period, summary_data=summary_data)
 
         return {
             "path": str(path.resolve()),
@@ -117,20 +137,31 @@ class ReportService:
         month: int | None,
         start_date: date | None,
         end_date: date | None,
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], dict[str, str]]:
         ignored_repo = IgnoredAttendanceRepository(self._db)
-        annotation_repo = AttendanceAnnotationRepository(self._db)
+        from sqlalchemy import func
+        from ..models.Attendance import Attendance
 
         if report_type == "daily_summary":
             if work_date is None:
                 raise ApplicationError("work_date is required for daily_summary", code="report_params_invalid")
             
             records = AttendanceRepository(self._db).list_for_date(work_date)
-            annotations = {a.employee_id: a.annotation_type for a in annotation_repo.list_for_date(work_date)}
             
             # Validation: ensure records exist
             if not records:
                  raise ApplicationError("No data found for this date", code="no_data_found")
+
+            present_count = sum(1 for r in records if r.status != "absent")
+            absent_count = sum(1 for r in records if r.status == "absent")
+            attendance_rate = (present_count / len(records) * 100) if records else 0
+
+            summary_data = {
+                "Total Employees": str(len(records)),
+                "Present": str(present_count),
+                "Absent": str(absent_count),
+                "Attendance Rate": f"{attendance_rate:.1f}%",
+            }
 
             rows = [
                 {
@@ -144,17 +175,18 @@ class ReportService:
                     "overtime_hours": r.overtime_hours,
                     "status": r.status,
                     "daily_deduction": r.daily_deduction,
-                    "reason": annotations.get(r.employee_id, "-"),
+                    "reason": r.leave_reason if r.status == "absent" and r.leave_reason else "",
                 }
                 for r in records
             ]
-            return self._append_ignored_section(
+            final_rows = self._append_ignored_section(
                 rows,
                 [
                     {"employee_code": r.employee_code, "reason": r.reason}
                     for r in ignored_repo.list_for_date(work_date)
                 ],
             )
+            return final_rows, summary_data
 
         if report_type == "monthly_payroll":
             if year is None or month is None:
@@ -168,6 +200,42 @@ class ReportService:
             if not records:
                 raise ApplicationError("No payroll records found for this period", code="no_data_found")
 
+            total_payroll = sum(r.final_salary for r in records if r.final_salary)
+            total_deductions = sum(r.salary_deduction for r in records if r.salary_deduction)
+            avg_salary = total_payroll / len(records) if records else 0
+
+            summary_data = {
+                "Employees Processed": str(len(records)),
+                "Total Payroll": f"₹{total_payroll:,.2f}",
+                "Total Deductions": f"₹{total_deductions:,.2f}",
+                "Average Salary": f"₹{avg_salary:,.2f}",
+            }
+            
+            start = date(year, month, 1)
+            end = date(year, month, cal.monthrange(year, month)[1])
+
+            # Pre-fetch leave reasons
+            att_records = self._db.query(Attendance.employee_id, Attendance.leave_reason).filter(
+                Attendance.work_date >= start,
+                Attendance.work_date <= end,
+                Attendance.status == "absent",
+                Attendance.leave_reason.isnot(None)
+            ).all()
+
+            from collections import defaultdict
+            reasons_by_emp = defaultdict(lambda: defaultdict(int))
+            for emp_id, reason in att_records:
+                if reason:
+                    reasons_by_emp[emp_id][reason] += 1
+
+            def format_reasons(emp_id: int) -> str:
+                counts = reasons_by_emp.get(emp_id, {})
+                if not counts: return ""
+                parts = []
+                for reason, count in counts.items():
+                    parts.append(f"{reason} ({count})" if count > 1 else reason)
+                return ", ".join(parts)
+
             rows = [
                 {
                     "employee_name": r.employee.name if r.employee else r.employee_id,
@@ -179,19 +247,18 @@ class ReportService:
                     "missing_hours": r.missing_hours,
                     "salary_deduction": r.salary_deduction,
                     "final_salary": r.final_salary,
-                    "reason": "-",
+                    "reason": format_reasons(r.employee_id),
                 }
                 for r in records
             ]
-            start = date(year, month, 1)
-            end = date(year, month, cal.monthrange(year, month)[1])
-            return self._append_ignored_section(
+            final_rows = self._append_ignored_section(
                 rows,
                 [
                     {"employee_code": r.employee_code, "reason": r.reason}
                     for r in ignored_repo.list_for_range(start, end)
                 ],
             )
+            return final_rows, summary_data
 
         if report_type == "attendance_stats":
             if start_date is None or end_date is None:
@@ -201,6 +268,39 @@ class ReportService:
             # Validation: ensure stats exist
             if not rows:
                 raise ApplicationError("No attendance stats found for this range", code="no_data_found")
+
+            avg_attendance = sum(float(r.get("attendance_percentage", 0)) for r in rows) / len(rows) if rows else 0
+            highest_emp = max(rows, key=lambda x: float(x.get("attendance_percentage", 0)))
+            lowest_emp = min(rows, key=lambda x: float(x.get("attendance_percentage", 0)))
+
+            summary_data = {
+                "Total Employees": str(len(rows)),
+                "Average Attendance": f"{avg_attendance:.1f}%",
+                "Highest Attendance": f"{highest_emp.get('employee_name', '')} ({float(highest_emp.get('attendance_percentage', 0)):.1f}%)",
+                "Lowest Attendance": f"{lowest_emp.get('employee_name', '')} ({float(lowest_emp.get('attendance_percentage', 0)):.1f}%)",
+            }
+
+            # Pre-fetch leave reasons
+            att_records = self._db.query(Attendance.employee_id, Attendance.leave_reason).filter(
+                Attendance.work_date >= start_date,
+                Attendance.work_date <= end_date,
+                Attendance.status == "absent",
+                Attendance.leave_reason.isnot(None)
+            ).all()
+
+            from collections import defaultdict
+            reasons_by_emp = defaultdict(lambda: defaultdict(int))
+            for emp_id, reason in att_records:
+                if reason:
+                    reasons_by_emp[emp_id][reason] += 1
+
+            def format_reasons(emp_id: int) -> str:
+                counts = reasons_by_emp.get(emp_id, {})
+                if not counts: return ""
+                parts = []
+                for reason, count in counts.items():
+                    parts.append(f"{reason} ({count})" if count > 1 else reason)
+                return ", ".join(parts)
 
             padded = []
             for row in rows:
@@ -212,15 +312,16 @@ class ReportService:
                     "total_worked_hours": row.get("total_worked_hours", 0),
                     "average_daily_hours": row.get("average_daily_hours", 0),
                     "attendance_percentage": row.get("attendance_percentage", 0),
-                    "reason": "-"
+                    "reason": format_reasons(row.get("employee_id", 0))
                 })
-            return self._append_ignored_section(
+            final_rows = self._append_ignored_section(
                 padded,
                 [
                     {"employee_code": r.employee_code, "reason": r.reason}
                     for r in ignored_repo.list_for_range(start_date, end_date)
                 ],
             )
+            return final_rows, summary_data
 
         raise ApplicationError("Unsupported report_type", code="report_type_invalid")
 
@@ -254,7 +355,7 @@ class ReportService:
                 writer.writerow([self._stringify(row.get(k)) for k in keys])
         return path
 
-    def _write_excel(self, filename_base: str, rows: list[dict[str, Any]]) -> Path:
+    def _write_excel(self, filename_base: str, rows: list[dict[str, Any]], *, title: str = "", report_period: str = "", summary_data: dict[str, str] = None) -> Path:
         path = self._reports_dir / f"{filename_base}.xlsx"
         workbook = Workbook()
         sheet = workbook.active
@@ -271,13 +372,15 @@ class ReportService:
         return format_excel_report(
             workbook=workbook,
             sheet=sheet,
-            title=f"{filename_base.replace('_', ' ').title()}",
+            title=title,
+            report_period=report_period,
+            summary_data=summary_data or {},
             headers=display_headers,
             rows=formatted_rows,
             filename=path
         )
 
-    def _write_pdf(self, filename_base: str, rows: list[dict[str, Any]], *, title: str) -> Path:
+    def _write_pdf(self, filename_base: str, rows: list[dict[str, Any]], *, title: str, report_period: str = "", summary_data: dict[str, str] = None) -> Path:
         path = self._reports_dir / f"{filename_base}.pdf"
         document = SimpleDocTemplate(str(path), pagesize=landscape(A4), leftMargin=24, rightMargin=24)
         styles = getSampleStyleSheet()
@@ -312,17 +415,48 @@ class ReportService:
         meta_style = ParagraphStyle(
             "meta_style",
             parent=styles["Normal"],
-            fontSize=9,
+            fontSize=10,
             textColor=colors.HexColor("#4b5563"),
-            spaceAfter=20
+            spaceAfter=6
+        )
+        summary_style = ParagraphStyle(
+            "summary_style",
+            parent=styles["Normal"],
+            fontSize=10,
+            textColor=colors.HexColor("#1f2937"),
+            spaceAfter=15
         )
         
         now = datetime.now()
-        meta_text = f"Generated: {now.strftime('%B %d, %Y')} at {now.strftime('%I:%M %p')}"
-        story = [
-            Paragraph(title, title_style),
-            Paragraph(meta_text, meta_style),
-        ]
+        meta_text = f"Generated On<br/>{now.strftime('%d %B %Y')}<br/>{now.strftime('%I:%M %p')}"
+        
+        header_table_data = [[
+            Paragraph("<b>AI Attendance Agent</b><br/><br/>" + f"<font size=14><b>{title}</b></font>", title_style),
+            Paragraph(f"<b>{report_period.split(': ')[0]}</b><br/>{report_period.split(': ')[1] if ': ' in report_period else ''}", meta_style) if report_period else "",
+            Paragraph(meta_text, meta_style)
+        ]]
+        header_table = Table(header_table_data, colWidths=[400, 150, 150])
+        header_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (1, 0), (2, 0), 'RIGHT'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+        ]))
+
+        story = [header_table]
+        
+        if summary_data:
+            summary_parts = []
+            for k, v in summary_data.items():
+                summary_parts.append(f"<b>{k}:</b><br/>{v}")
+            
+            # Divide summary parts evenly across row
+            sum_row = [Paragraph(part, summary_style) for part in summary_parts]
+            sum_table = Table([sum_row], colWidths=[794 / len(sum_row)] * len(sum_row))
+            sum_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 20),
+            ]))
+            story.append(sum_table)
         
         keys = list(rows[0].keys()) if rows else []
         display_headers = [HEADER_MAPPING.get(k, k.replace("_", " ").title()) for k in keys]

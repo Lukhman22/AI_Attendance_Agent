@@ -21,6 +21,7 @@ class Attendance(Base):
     status: Mapped[str] = mapped_column(String(32), index=True, default="present")
     missing_hours: Mapped[Decimal] = mapped_column(Numeric(8, 2), default=Decimal("0.00"))
     daily_deduction: Mapped[Decimal] = mapped_column(Numeric(12, 2), default=Decimal("0.00"))
+    leave_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
     source: Mapped[str] = mapped_column(String(32), default="file")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

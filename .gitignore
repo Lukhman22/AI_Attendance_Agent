@@ -54,3 +54,28 @@ wipe_data.py
 # PyInstaller build outputs
 dist/
 build/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build artifacts
+build/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads & generated reports
+uploads/
+reports/

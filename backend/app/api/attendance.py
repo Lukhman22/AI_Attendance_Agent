@@ -9,8 +9,9 @@ from ..dashboard.analytics import AnalyticsService
 from ..dashboard.summary import DailySummaryService
 from ..database.repositories import AttendanceRepository
 from ..database.session import get_db
-from ..schemas import AttendanceIngestResult, AttendanceStatsResponse, DailySummaryResponse
+from ..schemas import AttendanceIngestResult, AttendanceStatsResponse, DailySummaryResponse, AttendanceUpdateReasonRequest, AttendanceRecordRead
 from ..services.csv_service import CsvService
+from fastapi import HTTPException
 from .deps import (
     get_analytics_service,
     get_csv_service,
@@ -79,6 +80,24 @@ def list_records(
             "status": r.status,
             "missing_hours": r.missing_hours,
             "daily_deduction": r.daily_deduction,
+            "leave_reason": r.leave_reason,
         }
         for r in records
     ]
+
+@router.put("/records/{record_id}/reason", response_model=AttendanceRecordRead)
+def update_leave_reason(
+    record_id: int,
+    body: AttendanceUpdateReasonRequest,
+    db: Session = Depends(get_db),
+):
+    from ..models.Attendance import Attendance
+    record = db.query(Attendance).filter(Attendance.id == record_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+    
+    record.leave_reason = body.leave_reason
+    db.commit()
+    db.refresh(record)
+    return record
+

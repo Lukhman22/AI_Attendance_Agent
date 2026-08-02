@@ -11,6 +11,8 @@ def format_excel_report(
     workbook: Workbook,
     sheet,
     title: str,
+    report_period: str,
+    summary_data: dict[str, str],
     headers: list[str],
     rows: list[list[Any]],
     filename: Path
@@ -23,26 +25,46 @@ def format_excel_report(
     # 2. Add Title Section
     sheet.append(["AI Attendance Agent"])
     sheet.append([title])
+    if report_period:
+        sheet.append([report_period.replace(': ', ':\n')])
     now = datetime.datetime.now()
-    sheet.append([f"Generated On: {now.strftime('%d/%m/%Y %H:%M:%S')}"])
+    sheet.append([f"Generated On:\n{now.strftime('%d %B %Y')}\n{now.strftime('%I:%M %p')}"])
     sheet.append([]) # Blank row
+    
+    current_row = sheet.max_row
+    
+    if summary_data:
+        summary_items = [f"{k}:\n{v}" for k, v in summary_data.items()]
+        sheet.append(summary_items)
+        sheet.append([])
+        current_row = sheet.max_row
 
     # Style Title Section
     title_font = Font(name="Calibri", size=16, bold=True, color="1F2937")
     subtitle_font = Font(name="Calibri", size=14, bold=True, color="4B5563")
-    meta_font = Font(name="Calibri", size=10, italic=True, color="6B7280")
+    meta_font = Font(name="Calibri", size=10, color="4B5563")
+    summary_font = Font(name="Calibri", size=10, bold=True, color="1F2937")
     
     sheet["A1"].font = title_font
     sheet["A2"].font = subtitle_font
-    sheet["A3"].font = meta_font
+    if report_period:
+        sheet["A3"].font = meta_font
+        sheet["A3"].alignment = Alignment(wrap_text=True, vertical="top")
+        sheet["B3"].font = meta_font
+        sheet["B3"].alignment = Alignment(wrap_text=True, vertical="top", horizontal="right")
+        sheet["B3"].value = sheet["A4"].value # Move generated on to B3
+        sheet["A4"].value = ""
+    else:
+        sheet["A3"].font = meta_font
+        sheet["A3"].alignment = Alignment(wrap_text=True, vertical="top")
 
-    # Merge cells for title
-    max_cols = len(headers) if headers else 5
-    for r in range(1, 4):
-        sheet.merge_cells(start_row=r, start_column=1, end_row=r, end_column=max_cols)
+    if summary_data:
+        for col_idx in range(1, len(summary_items) + 1):
+            cell = sheet.cell(row=current_row - 1, column=col_idx)
+            cell.font = summary_font
+            cell.alignment = Alignment(wrap_text=True, vertical="top")
 
-    # 3. Add Headers and Data
-    header_row_idx = 5
+    header_row_idx = current_row + 1
     if headers:
         sheet.append(headers)
     for row in rows:
